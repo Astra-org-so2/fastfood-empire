@@ -85,7 +85,25 @@ npm run build              # dist/api, dist/worker, dist/web
 npm start                  # serves the API and the built UI on one port
 ```
 
-Linux desktop app: see [docs/DESKTOP.md](docs/DESKTOP.md).
+On Ubuntu/Debian you can install it system-wide instead:
+
+```bash
+npm run build && npm run package:deb      # -> dist/installers/ai-dev-orchestrator_*_amd64.deb
+sudo apt install ./dist/installers/ai-dev-orchestrator_*.deb
+
+aido                 # start the API and the UI (foreground)
+aido open            # start it in the background and open the UI
+aido worker          # run background agents with no window, for systemd
+aido paths           # print the directories this installation uses
+
+systemctl --user enable --now ai-dev-orchestrator-worker.service   # unattended agent work
+```
+
+The package needs Node 22+ and Git on the machine (`Depends: nodejs (>= 22.5), git`) and
+keeps all state in `~/.local/share/aido` and `~/aido`. It is built with `dpkg-deb` from the
+same bundles the desktop shell loads; when the Electron toolchain is present the same
+package also carries the native window (`aido desktop`). See
+[docs/DESKTOP.md](docs/DESKTOP.md).
 
 ## Screens
 
@@ -170,14 +188,17 @@ packages/
 
 ```bash
 npm run typecheck                        # tsc across all packages and the app
-npm run test                             # 42 unit + integration tests
-npm run test:ui                          # 16 screen render tests (needs a running API)
+npm run test                             # 60 unit + integration tests (44 + 16 screens)
+npm run test:ui                          # the 16 screen render tests on their own
 npm run e2e:api                          # 60 checks against a real listening server
+npm run package:deb                      # build the Debian package from the built bundles
 ```
 
-`npm run test:ui` mounts every screen in a DOM against a live API and fails if a screen
+`npm run test:ui` mounts every route in a DOM against a live API and fails if a screen
 crashes, renders nothing, or shows an error state — it is the check that catches a UI
-reading a field the API does not send.
+reading a field the API does not send. It **skips with a warning** when no API is
+reachable, so a green `npm test` without a running server says nothing about the screens;
+run `npm run dev:api` (or `aido serve`) first. The same applies to `npm run e2e:api`.
 
 ## Status and known limits
 
@@ -191,10 +212,11 @@ verified here:
 - No provider credential is configured in this environment, so real-provider paths
   (discovery, headers, quota learning) are exercised by tests and by the adapter code, not
   by a live account here.
-- The `.deb`/AppImage packaging configuration is complete; producing the artefacts requires
-  a Linux host with `dpkg`/`fakeroot` and the Electron toolchain
-  (`cd apps/desktop/packaging && npm install`), which is deliberately not part of the
-  default install.
+- The `.deb` is built and verified here (`npm run package:deb`, then extracted with
+  `dpkg-deb -x` and started from the extracted tree). What is *not* verified here is the
+  Electron window itself: this environment cannot reach the Electron download host, so the
+  desktop shell was bundled but never launched, and `aido desktop` reports that the runtime
+  is missing instead of failing obscurely. AppImage output needs the same toolchain.
 - `notify-send` is not present in every environment; notification delivery reports the
   failure instead of pretending to have sent something.
 - SQLite is the default store (zero operational complexity). The storage layer is behind

@@ -64,27 +64,58 @@ cd apps/desktop/packaging && npm install && cd ../../..
 npm run start:desktop           # launches the app from the repository
 ```
 
-Producing an installer:
+Producing an installer — two routes, both shipping the same product:
 
 ```bash
-npm run package:desktop          # dist/installers/*.deb
-npm run package:desktop:all      # .deb and AppImage
+npm run package:deb              # dist/installers/ai-dev-orchestrator_<version>_<arch>.deb
+npm run package:desktop          # the same .deb built by electron-builder instead
+npm run package:desktop:all      # electron-builder: .deb and AppImage
 ```
 
-`electron-builder` requires a Linux host with the usual packaging tools; in a container
-you may also need `fakeroot` and `dpkg`. If those are unavailable, the `.deb` cannot be
-produced from that machine — the configuration is complete and committed, but the
-artefact has not been built there, and this document says so rather than implying a
-package exists.
+`npm run package:deb` (`scripts/build-deb.mjs`) needs only `dpkg-deb`, so it works on any
+Linux machine and in a container. It packages the API, the worker, the web bundle, the
+provider catalogue and a launcher, and — when the Electron runtime and `dist/desktop` are
+present — the native window as well:
 
-Installers are written to `dist/installers/`. The description, dependencies
-(libnotify, git), desktop entry and icon come from `apps/desktop/packaging/electron-builder.json`.
+```bash
+npm run build && npm run package:deb
+# Includes the native desktop window shell: `aido desktop`.
+```
+
+Without the Electron runtime it still builds a working package and says so explicitly, so a
+package without a window can never be mistaken for one with it:
+
+```
+Built without the desktop window shell (Electron runtime absent); `aido serve`, `aido worker`
+and `aido open` work, and `aido desktop` explains how to rebuild with it.
+```
+
+What the package installs:
+
+| Path | Contents |
+| --- | --- |
+| `/opt/ai-dev-orchestrator/` | API + worker bundles, web bundle, `config/providers`, docs, desktop bundle and Electron runtime when built with them |
+| `/usr/bin/aido` | launcher: `serve`, `open`, `worker`, `desktop`, `paths`, `version` |
+| `/usr/lib/systemd/user/ai-dev-orchestrator-worker.service` | background agents, restarts on failure |
+| `/usr/share/applications/ai-dev-orchestrator.desktop` | application-menu entry |
+| `/usr/share/icons/hicolor/scalable/apps/ai-dev-orchestrator.svg` | icon |
+
+`aido` keeps everything the user owns outside `/opt`: `AIDO_DATA_DIR` defaults to
+`~/.local/share/aido` (database, master key) and `AIDO_WORKSPACE_ROOT` to `~/aido`. It
+refuses to start on Node older than 22 with a message instead of an obscure crash. The
+launchers are relocatable (`AIDO_APP_DIR`), which is how the package is tested from an
+extracted tree.
+
+`electron-builder` additionally requires a Linux host with the usual packaging tools; in a
+container you may also need `fakeroot`. If those or the Electron download host are
+unavailable, that route cannot produce an artefact, and `npm run package:deb` is the
+supported alternative.
 
 Install the `.deb`:
 
 ```bash
 sudo apt install ./dist/installers/ai-dev-orchestrator_0.1.0_amd64.deb
-ai-dev-orchestrator                # or launch it from the application menu
+aido open                          # or launch it from the application menu
 ```
 
 ## Where the desktop build keeps its data

@@ -76,6 +76,31 @@ describe('static web serving', () => {
     expect(posted.status).toBe(404);
   });
 
+  it('serves an asset that appears after the server started', async () => {
+    server = await buildServer({ serveWeb: true, webDistDir: distDir });
+    const url = await server.listen({ host: '127.0.0.1', port: 0 });
+
+    // A rebuild replaces the hashed bundle while the server keeps running; a route table
+    // built at boot would answer the new hash with the SPA shell (or a 404) until restart.
+    fs.writeFileSync(path.join(distDir, 'assets', 'index-newhash.js'), 'console.log("rebuilt");');
+    const asset = await fetch(`${url}/assets/index-newhash.js`);
+    expect(asset.status).toBe(200);
+    expect(asset.headers.get('content-type')).toContain('javascript');
+    expect(await asset.text()).toContain('rebuilt');
+  });
+
+  it('refuses to serve files outside the bundle directory', async () => {
+    server = await buildServer({ serveWeb: true, webDistDir: distDir });
+    const url = await server.listen({ host: '127.0.0.1', port: 0 });
+
+    for (const attempt of ['/../package.json', '/..%2fpackage.json', '/assets/../../package.json']) {
+      const response = await fetch(`${url}${attempt}`);
+      expect(response.status, attempt).toBe(404);
+      const body = await response.text();
+      expect(body, attempt).not.toContain('"name": "ai-dev-orchestrator"');
+    }
+  });
+
   it('serves the API without the bundle when none is built', async () => {
     server = await buildServer({ serveWeb: true, webDistDir: path.join(root, 'missing') });
     const url = await server.listen({ host: '127.0.0.1', port: 0 });

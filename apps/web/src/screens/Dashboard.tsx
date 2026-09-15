@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Activity, AlertTriangle, ArrowRight, Plus } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Info, Plus } from 'lucide-react';
 import { Badge, Button, cx, ErrorState, formatNumber, formatPercent, formatRelativeTime, formatTokens, LoadingRows, Panel, QuotaTypeBadge, Stat, StatusDot } from '@aido/ui';
 import { useDashboard, useHealth } from '../lib/api.js';
 import { PageHeader, ProjectStatusBadge, Section, TimeAgo } from '../components/common.js';
@@ -38,6 +38,19 @@ export function Dashboard(): ReactNode {
           </>
         }
       />
+
+      {data.providers.length > 0 && data.providers.every((provider) => !provider.enabled) ? (
+        <div className="mb-3 flex items-start gap-2 rounded-[var(--radius-md)] border border-accent/40 bg-accent-soft/20 px-2.5 py-2 text-[12px] text-ink">
+          <Info className="mt-0.5 size-3.5 shrink-0 text-accent" aria-hidden />
+          <span>
+            No provider is enabled yet, so nothing can run. Add an API key on{' '}
+            <Link to="/providers" className="font-medium text-accent underline decoration-dotted">
+              Providers
+            </Link>{' '}
+            — free tiers are detected and tracked automatically, and FREE ONLY mode keeps every request inside them.
+          </span>
+        </div>
+      ) : null}
 
       {data.warnings.length ? (
         <div className="mb-3 space-y-1.5">

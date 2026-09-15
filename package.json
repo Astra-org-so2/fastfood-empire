@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AI Dev Orchestrator — a multi-provider, quota-aware, multi-agent AI software engineering platform.",
+  "description": "AI Dev Orchestrator \u2014 a multi-provider, quota-aware, multi-agent AI software engineering platform.",
   "engines": {
     "node": ">=22.5.0"
   },
@@ -17,6 +17,7 @@
     "dev:web": "vite --config apps/web/vite.config.ts",
     "dev:worker": "tsx apps/worker/src/index.ts",
     "build": "node scripts/build.mjs",
+    "build:web": "vite build --config apps/web/vite.config.ts",
     "start": "node dist/api/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
@@ -26,10 +27,12 @@
     "test:unit": "vitest run test/unit",
     "test:integration": "vitest run test/integration",
     "test:ui": "vitest run test/ui",
+    "e2e:api": "tsx scripts/e2e-api.mjs",
     "db:migrate": "tsx scripts/migrate.mjs",
     "verify": "npm run typecheck && npm run lint && npm run test",
     "build:desktop": "node scripts/build-desktop.mjs",
     "package:desktop": "node apps/desktop/packaging/package-tool.mjs --target=deb",
+    "package:deb": "node scripts/build-deb.mjs",
     "package:desktop:all": "node apps/desktop/packaging/package-tool.mjs --target=deb --target=AppImage",
     "start:desktop": "node apps/desktop/packaging/start.mjs"
   },
@@ -43,7 +46,7 @@
     "esbuild": "^0.24.0",
     "eslint": "^9.15.0",
     "globals": "^15.12.0",
-    "jsdom": "^30.0.1",
+    "jsdom": "^25.0.1",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

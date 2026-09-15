@@ -25,6 +25,7 @@ npm run dev                 # API :8787 + web :5173 (Vite proxies /api)
 | --- | --- |
 | `npm run dev` | API + web dev server together |
 | `npm run build` | esbuild bundles for `apps/api`, `apps/worker`, and `vite build` for `dist/web` |
+| `npm run build:web` | The UI bundle on its own (`dist/web`) |
 | `npm start` | Runs the built API, which also serves `dist/web` on one port |
 | `npm run typecheck` | `tsc -p tsconfig.json --noEmit` across every package and app |
 | `npm run lint` / `lint:fix` | ESLint |
@@ -35,7 +36,8 @@ npm run dev                 # API :8787 + web :5173 (Vite proxies /api)
 | `npm run verify` | typecheck + lint + test |
 | `npm run build:desktop` | Bundles the Electron main/preload (no Electron install needed) |
 | `npm run start:desktop` | Launches the desktop shell (needs the opt-in toolchain) |
-| `npm run package:desktop[:all]` | Builds `.deb` (and AppImage) into `dist/installers` |
+| `npm run package:deb` | Builds the `.deb` with `dpkg-deb` from the built bundles (no Electron needed) |
+| `npm run package:desktop[:all]` | Builds `.deb` (and AppImage) with electron-builder |
 | `npm run db:migrate` | Applies migrations to the configured database |
 
 ## Testing
@@ -144,13 +146,25 @@ binary that CI images and offline machines often cannot fetch):
 ```bash
 npm run build:web                # the shared UI bundle the shell serves
 npm run build:desktop            # bundles main + preload with esbuild (no Electron needed)
+npm run package:deb              # a working .deb without Electron (server + worker + UI)
 cd apps/desktop/packaging && npm install && cd ../../..
-npm run start:desktop            # run it
-npm run package:desktop          # dist/installers/*.deb
+npm run start:desktop            # run the window
+npm run package:desktop          # dist/installers/*.deb, built by electron-builder
 ```
 
 `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install` in `apps/desktop/packaging` installs the
 toolchain without the binary: bundling still works, but running and packaging need it.
+
+`scripts/build-deb.mjs` is the route that works without any of that: it stages the same
+product tree, writes the control file, launcher, desktop entry, icon and systemd user unit,
+and builds with `dpkg-deb`. It adds the native window when the Electron runtime is present
+and says so when it is not. Test it from an extracted package with `AIDO_APP_DIR`:
+
+```bash
+npm run build && npm run package:deb
+dpkg-deb -x dist/installers/ai-dev-orchestrator_0.1.0_amd64.deb /tmp/aido
+AIDO_APP_DIR=/tmp/aido/opt/ai-dev-orchestrator sh /tmp/aido/usr/bin/aido paths
+```
 
 See [docs/DESKTOP.md](DESKTOP.md) for paths, notifications, updates and portability.
 

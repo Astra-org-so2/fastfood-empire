@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
-import fastifyStatic from '@fastify/static';
 import type { Logger } from '@aido/observability';
 import { createContainer, type Container, type ContainerOptions } from './container.js';
 import { createSseHub, type SseHub } from './sse.js';
@@ -187,6 +186,41 @@ const STATIC_EXTENSIONS = new Set([
   '.webmanifest',
 ]);
 
+/** Content types for the file extensions the bundle actually contains. */
+const CONTENT_TYPES: Record<string, string> = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.cjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.ico': 'image/x-icon',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.wasm': 'application/wasm',
+  '.xml': 'application/xml',
+  '.webmanifest': 'application/manifest+json',
+};
+
+/**
+ * Resolves a request path inside a directory, refusing anything that climbs out of it.
+ * Returns `null` when the path is unsafe or simply absent.
+ */
+function resolveWithin(root: string, pathname: string): string | null {
+  const candidate = path.resolve(root, `.${pathname.startsWith('/') ? pathname : `/${pathname}`}`);
+  const relative = path.relative(root, candidate);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+  return fs.existsSync(candidate) && fs.statSync(candidate).isFile() ? candidate : null;
+}
+
 function registerErrorHandling(app: FastifyInstance, container: Container): void {
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith('/api/')) {
@@ -194,10 +228,17 @@ function registerErrorHandling(app: FastifyInstance, container: Container): void
     }
     const pathname = (request.url.split('?')[0] ?? '').replace(/\/+$/, '') || '/';
     const wanted = path.extname(pathname).toLowerCase();
-    // A missing asset must 404 as an asset. Returning the SPA shell for
-    // `/assets/index-abc.js` makes the browser refuse the module (it was sent as
-    // text/html) and the page renders blank, which looks like a broken build.
     if (wanted && STATIC_EXTENSIONS.has(wanted)) {
+      // A file that exists is served from disk on every request rather than from a route
+      // table built at boot: the hashed bundles are replaced by `npm run build` while the
+      // server keeps running, and a stale route table would 404 the new hash until a
+      // restart. A file that does not exist 404s *as an asset* — handing back the SPA shell
+      // for `/assets/index-abc.js` makes the browser refuse the module (it arrives as
+      // text/html) and the page renders blank, which looks like a broken build.
+      const file = resolveWithin(container.config.webDistDir, pathname);
+      if (file && (request.method === 'GET' || request.method === 'HEAD')) {
+        return reply.type(CONTENT_TYPES[wanted] ?? 'application/octet-stream').send(fs.createReadStream(file));
+      }
       return reply.status(404).send({ error: `No such asset: ${pathname}` });
     }
     // SPA fallback: the client router owns every other non-API path.
@@ -216,8 +257,12 @@ function registerErrorHandling(app: FastifyInstance, container: Container): void
 }
 
 /**
- * Serves the single built UI bundle. Registered only in production so the dev
- * server (Vite, with HMR) is used during development.
+ * Announces that the built UI bundle will be served.
+ *
+ * The files themselves are streamed by the not-found handler below rather than from a route
+ * table registered here: a route table is built once, at boot, so a `npm run build` while
+ * the server is running would 404 the new asset hashes until a restart. Serving from disk
+ * per request keeps a long-running server and a fresh bundle in step.
  */
 function registerStaticWeb(app: FastifyInstance, container: Container): void {
   const distDir = container.config.webDistDir;
@@ -225,7 +270,7 @@ function registerStaticWeb(app: FastifyInstance, container: Container): void {
     container.logger.warn('web bundle not found; serving API only', { distDir });
     return;
   }
-  app.register(fastifyStatic, { root: distDir, prefix: '/', wildcard: false });
+  void app;
   container.logger.info('serving built web UI', { distDir });
 }
 
