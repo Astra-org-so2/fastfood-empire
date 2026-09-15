@@ -1,0 +1,24 @@
+{
+  "name": "@aido/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@aido/agents": "*",
+    "@aido/ai-core": "*",
+    "@aido/config": "*",
+    "@aido/model-router": "*",
+    "@aido/observability": "*",
+    "@aido/orchestrator": "*",
+    "@aido/project-memory": "*",
+    "@aido/providers": "*",
+    "@aido/quota-engine": "*",
+    "@aido/sandbox": "*",
+    "@aido/security": "*",
+    "@aido/storage": "*",
+    "@aido/testing": "*",
+    "@aido/types": "*",
+    "@aido/platform": "*"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "cerebras",
+  "name": "Cerebras Inference",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://inference-docs.cerebras.ai/support/rate-limits",
+  "apiBaseUrl": "https://api.cerebras.ai/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "utc_midnight",
+    "resetTimezone": null,
+    "note": "A free tier is offered with daily token ceilings that vary per model and have changed over time. No figures are asserted here; limits are learned from response headers where present and from observed 429s otherwise. Record the values from your console in Settings → Quotas for accurate pre-flight planning."
+  },
+  "capabilities": ["chat", "streaming", "tools", "jsonMode", "codeGeneration", "longContext"],
+  "envKeys": ["CEREBRAS_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Very high throughput inference. Model catalogue is read from /models when discovery runs. Seed list intentionally empty: hard-coded model ids rot quickly and a wrong id wastes a request.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

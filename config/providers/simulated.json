@@ -1,0 +1,66 @@
+{
+  "id": "simulated",
+  "name": "Local Simulator",
+  "kind": "simulated",
+  "documentationUrl": null,
+  "apiBaseUrl": "internal://simulator",
+  "authenticationType": "none",
+  "credentialFields": [],
+  "freeTier": {
+    "available": true,
+    "quotaType": "user_hosted",
+    "resetStrategy": "rolling_24h",
+    "resetTimezone": null,
+    "note": "Runs entirely inside this application. Consumes no external quota and no network. Used to exercise the full orchestration pipeline and end-to-end tests without API keys. Output is deterministic and clearly labelled as simulated — it is never presented as a real model response."
+  },
+  "capabilities": ["chat", "streaming", "jsonMode", "codeGeneration", "structuredOutput"],
+  "envKeys": [],
+  "modelsEndpoint": null,
+  "usageEndpoint": null,
+  "healthEndpoint": null,
+  "telemetry": {},
+  "quotaLimits": {
+    "requestsPerMinute": null,
+    "requestsPerHour": null,
+    "requestsPerDay": null,
+    "requestsPerMonth": null,
+    "tokensPerMinute": null,
+    "tokensPerDay": null,
+    "tokensPerMonth": null,
+    "concurrentRequests": null,
+    "resetStrategy": "rolling_24h",
+    "resetTimezone": null,
+    "provenance": {
+      "source": "user_configured",
+      "confidence": 1,
+      "note": "Locally hosted: limits are whatever the operator's machine allows; treated as unlimited but still metered for observability."
+    }
+  },
+  "seedModels": [
+    {
+      "id": "sim-small",
+      "displayName": "Simulator (small/fast)",
+      "contextWindow": 32000,
+      "maxOutputTokens": 4096,
+      "capabilities": { "codeGeneration": true, "structuredOutput": true }
+    },
+    {
+      "id": "sim-large",
+      "displayName": "Simulator (larger/slower)",
+      "contextWindow": 128000,
+      "maxOutputTokens": 16384,
+      "capabilities": { "codeGeneration": true, "structuredOutput": true, "longContext": true, "reasoning": true }
+    },
+    {
+      "id": "sim-error-prone",
+      "displayName": "Simulator (flaky, for failure testing)",
+      "contextWindow": 32000,
+      "maxOutputTokens": 4096,
+      "capabilities": { "codeGeneration": true, "structuredOutput": true }
+    }
+  ],
+  "notes": "Deliberately included so every subsystem can be demonstrated and tested without credentials or network access. Marked as simulated everywhere in the UI so it can never be mistaken for a real provider.",
+  "metadataVerified": true,
+  "lastVerifiedAt": null,
+  "simulated": true
+}

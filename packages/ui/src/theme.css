@@ -1,0 +1,195 @@
+@import 'tailwindcss';
+
+/**
+ * Design tokens for both shells (§41).
+ *
+ * Dark-first, dense, built for long sessions: low-chroma surfaces, one accent for
+ * interactive state, and semantic colours reserved for meaning (free quota, paid,
+ * warnings, approvals) rather than decoration. No gradients, no oversized cards.
+ *
+ * Tailwind v4 reads these through `@theme`, so every value is available as a utility
+ * (`bg-surface-2`, `text-muted`, `border-line`) and as a CSS variable.
+ */
+@theme {
+  /* Surfaces: five steps, each meaningful (page, panel, raised, inset, hover). */
+  --color-canvas: oklch(0.17 0.008 250);
+  --color-surface: oklch(0.21 0.009 250);
+  --color-surface-2: oklch(0.245 0.01 250);
+  --color-inset: oklch(0.15 0.008 250);
+  --color-hover: oklch(0.27 0.011 250);
+
+  --color-line: oklch(0.31 0.012 250);
+  --color-line-strong: oklch(0.4 0.015 250);
+
+  --color-ink: oklch(0.93 0.005 250);
+  --color-muted: oklch(0.7 0.012 250);
+  --color-faint: oklch(0.56 0.012 250);
+
+  /* One accent. */
+  --color-accent: oklch(0.72 0.15 250);
+  --color-accent-ink: oklch(0.18 0.02 250);
+  --color-accent-soft: oklch(0.32 0.06 250);
+
+  /* Meaning, not decoration. */
+  --color-free: oklch(0.74 0.16 150);
+  --color-trial: oklch(0.78 0.14 85);
+  --color-paid: oklch(0.68 0.16 25);
+  --color-unknown: oklch(0.62 0.02 250);
+  --color-hosted: oklch(0.72 0.11 300);
+  --color-warn: oklch(0.8 0.15 80);
+  --color-danger: oklch(0.65 0.2 25);
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Mono', ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Visible focus for keyboard users everywhere, never removed. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-accent-soft);
+  }
+
+  /* Dense scrollbars, matching the surface palette. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-line-strong);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  code,
+  pre,
+  .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* A panel is the one container primitive: bordered, radius 5, no shadow. */
+  .panel {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--color-line);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .row-hover:hover {
+    background-color: var(--color-hover);
+  }
+
+  /* Tables hold most of the information in this product; keep them dense. */
+  .data-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12px;
+  }
+  .data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--color-surface-2);
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--text-2xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--color-line);
+    white-space: nowrap;
+  }
+  .data-table td {
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-line) 55%, transparent);
+    vertical-align: top;
+  }
+  .data-table tbody tr:hover {
+    background-color: var(--color-hover);
+  }
+
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-surface-2), var(--color-hover), var(--color-surface-2));
+    background-size: 200% 100%;
+    animation: skeleton 1.4s ease-in-out infinite;
+    border-radius: var(--radius-sm);
+  }
+
+  @keyframes skeleton {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .scroll-y {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

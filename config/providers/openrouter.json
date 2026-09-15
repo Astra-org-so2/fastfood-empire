@@ -1,0 +1,27 @@
+{
+  "id": "openrouter",
+  "name": "OpenRouter",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://openrouter.ai/docs/api-reference/limits",
+  "apiBaseUrl": "https://openrouter.ai/api/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "api_reported",
+    "resetTimezone": null,
+    "note": "Models whose id ends in ':free' incur no charge. OpenRouter publishes pricing per model (authoritative, read live) and exposes remaining budget/limits at GET /key. Free-model request ceilings depend on account balance/history and are read from that endpoint when available."
+  },
+  "capabilities": ["chat", "streaming", "tools", "jsonMode", "codeGeneration", "longContext", "vision"],
+  "envKeys": ["OPENROUTER_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": "/key",
+  "healthEndpoint": "/key",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Model catalogue (including per-model pricing and context length) comes from the live GET /models endpoint, which needs no authentication — the Model Catalog is therefore accurate without a key. Zero-priced models are classified as renewable free access; anything with a non-zero price is classified PAID and excluded in FREE ONLY mode.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}
