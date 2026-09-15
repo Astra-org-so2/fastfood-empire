@@ -1,0 +1,27 @@
+{
+  "id": "mistral",
+  "name": "Mistral AI",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://docs.mistral.ai/deployment/laplateforme/tier/",
+  "apiBaseUrl": "https://api.mistral.ai/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "rolling_24h",
+    "resetTimezone": null,
+    "note": "The free 'Experiment' tier applies to a subset of models with monthly token allowances measured on a rolling basis. Which models are included and the allowance size change; no figures are asserted here."
+  },
+  "capabilities": ["chat", "streaming", "tools", "jsonMode", "codeGeneration", "embeddings"],
+  "envKeys": ["MISTRAL_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Model catalogue read from /models. Free-tier eligibility per model is not exposed by the API, so it is stored as operator-configurable metadata (Settings → Models) and defaults to UNKNOWN rather than assuming free access.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

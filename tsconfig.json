@@ -1,0 +1,83 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@aido/types": [
+        "packages/types/src/index.ts"
+      ],
+      "@aido/config": [
+        "packages/config/src/index.ts"
+      ],
+      "@aido/observability": [
+        "packages/observability/src/index.ts"
+      ],
+      "@aido/security": [
+        "packages/security/src/index.ts"
+      ],
+      "@aido/storage": [
+        "packages/storage/src/index.ts"
+      ],
+      "@aido/ai-core": [
+        "packages/ai-core/src/index.ts"
+      ],
+      "@aido/providers": [
+        "packages/providers/src/index.ts"
+      ],
+      "@aido/quota-engine": [
+        "packages/quota-engine/src/index.ts"
+      ],
+      "@aido/model-router": [
+        "packages/model-router/src/index.ts"
+      ],
+      "@aido/agents": [
+        "packages/agents/src/index.ts"
+      ],
+      "@aido/project-memory": [
+        "packages/project-memory/src/index.ts"
+      ],
+      "@aido/orchestrator": [
+        "packages/orchestrator/src/index.ts"
+      ],
+      "@aido/sandbox": [
+        "packages/sandbox/src/index.ts"
+      ],
+      "@aido/git": [
+        "packages/git/src/index.ts"
+      ],
+      "@aido/platform": [
+        "packages/platform/src/index.ts"
+      ],
+      "@aido/testing": [
+        "packages/testing/src/index.ts"
+      ],
+      "@aido/ui": [
+        "packages/ui/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.tsx",
+    "packages/**/*.ts",
+    "packages/**/*.tsx",
+    "scripts/**/*.mjs",
+    "test/**/*.ts",
+    "test/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".data",
+    "**/dist/**"
+  ]
+}

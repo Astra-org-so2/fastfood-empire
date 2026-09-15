@@ -1,0 +1,49 @@
+{
+  "appId": "org.aido.orchestrator",
+  "productName": "AI Dev Orchestrator",
+  "copyright": "Copyright \u00a9 AI Dev Orchestrator contributors",
+  "directories": {
+    "output": "../../../dist/installers",
+    "buildResources": "build"
+  },
+  "files": [
+    "../../../dist/desktop/**/*",
+    "../../../dist/web/**/*"
+  ],
+  "extraMetadata": {
+    "main": "dist/desktop/main.cjs"
+  },
+  "linux": {
+    "target": [
+      "deb"
+    ],
+    "category": "Development",
+    "synopsis": "Multi-provider AI engineering team orchestration",
+    "description": "Runs a team of specialised AI agents across multiple LLM providers, manages free-tier quotas, and drives real repositories. The desktop build adds local file access, OS keyring storage, system notifications and background agents.",
+    "maintainer": "AI Dev Orchestrator contributors <maintainers@aido.local>",
+    "executableName": "ai-dev-orchestrator",
+    "desktop": {
+      "entry": {
+        "Name": "AI Dev Orchestrator",
+        "Comment": "Multi-provider AI engineering team orchestration",
+        "Categories": "Development;Utility;"
+      }
+    },
+    "depends": [
+      "libnotify-bin"
+    ]
+  },
+  "deb": {
+    "depends": [
+      "libnotify-bin",
+      "libgtk-3-0",
+      "libnss3",
+      "libasound2"
+    ],
+    "priority": "optional"
+  },
+  "appImage": {
+    "category": "Development"
+  },
+  "publish": null
+}

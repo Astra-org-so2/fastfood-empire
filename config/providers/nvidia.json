@@ -1,0 +1,27 @@
+{
+  "id": "nvidia",
+  "name": "NVIDIA NIM",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://docs.api.nvidia.com/nim/",
+  "apiBaseUrl": "https://integrate.api.nvidia.com/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": null,
+    "quotaType": "unknown",
+    "resetStrategy": "unknown",
+    "resetTimezone": null,
+    "note": "NVIDIA provides development access with credit allowances and per-key rate limits. Because credit vs. renewable status has changed and is not asserted by the API, this provider is classified UNKNOWN and is excluded from FREE ONLY mode until the operator sets its quota type explicitly."
+  },
+  "capabilities": ["chat", "streaming", "tools", "codeGeneration", "longContext"],
+  "envKeys": ["NVIDIA_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "OpenAI-compatible hosted NIM endpoints. UNKNOWN quota classification is intentional and conservative: the system must never claim something is renewable free when that has not been verified.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}
