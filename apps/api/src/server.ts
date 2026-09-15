@@ -97,7 +97,11 @@ export interface ServerHandle {
 
 export interface BuildServerOptions extends ContainerOptions {
   container?: Container;
-  /** Serve the built web UI from `dist/web` (production) or leave routes only. */
+  /**
+   * Serve the built web UI from `dist/web`. Defaults to "whatever is in `dist/web`":
+   * a production install always has a bundle, the dev server (Vite, port 5173) never
+   * needs one, and `NODE_ENV` is too easy to forget when starting the packaged API.
+   */
   serveWeb?: boolean;
   /** Directory holding the built UI bundle; overrides the config default. */
   webDistDir?: string;
@@ -130,7 +134,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Ser
   registerDashboardRoutes(app, container);
   registerErrorHandling(app, container);
 
-  if (options.serveWeb ?? container.config.isProduction) {
+  if (options.serveWeb ?? fs.existsSync(container.config.webDistDir)) {
     registerStaticWeb(app, container);
   }
 
@@ -159,14 +163,48 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Ser
   };
 }
 
+/** Extensions that are always fetched as files; never answered with the SPA shell. */
+const STATIC_EXTENSIONS = new Set([
+  '.js',
+  '.mjs',
+  '.cjs',
+  '.css',
+  '.map',
+  '.json',
+  '.txt',
+  '.ico',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.svg',
+  '.webp',
+  '.gif',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.wasm',
+  '.xml',
+  '.webmanifest',
+]);
+
 function registerErrorHandling(app: FastifyInstance, container: Container): void {
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith('/api/')) {
       return reply.status(404).send({ error: `No API route matches ${request.method} ${request.url}` });
     }
-    // SPA fallback: the client router owns every non-API path.
+    const pathname = (request.url.split('?')[0] ?? '').replace(/\/+$/, '') || '/';
+    const wanted = path.extname(pathname).toLowerCase();
+    // A missing asset must 404 as an asset. Returning the SPA shell for
+    // `/assets/index-abc.js` makes the browser refuse the module (it was sent as
+    // text/html) and the page renders blank, which looks like a broken build.
+    if (wanted && STATIC_EXTENSIONS.has(wanted)) {
+      return reply.status(404).send({ error: `No such asset: ${pathname}` });
+    }
+    // SPA fallback: the client router owns every other non-API path.
     const filePath = path.join(container.config.webDistDir, 'index.html');
-    if (fs.existsSync(filePath)) return reply.type('text/html').send(fs.createReadStream(filePath));
+    if ((request.method === 'GET' || request.method === 'HEAD') && fs.existsSync(filePath)) {
+      return reply.type('text/html').send(fs.createReadStream(filePath));
+    }
     return reply.status(404).type('text/plain').send('Web UI is not built. Run `npm run build` or use the dev server.');
   });
 
