@@ -188,7 +188,7 @@ packages/
 
 ```bash
 npm run typecheck                        # tsc across all packages and the app
-npm run test                             # 60 unit + integration tests (44 + 16 screens)
+npm run test                             # 75 unit + integration tests (59 + 16 screens)
 npm run test:ui                          # the 16 screen render tests on their own
 npm run e2e:api                          # 60 checks against a real listening server
 npm run package:deb                      # build the Debian package from the built bundles
@@ -199,6 +199,14 @@ crashes, renders nothing, or shows an error state — it is the check that catch
 reading a field the API does not send. It **skips with a warning** when no API is
 reachable, so a green `npm test` without a running server says nothing about the screens;
 run `npm run dev:api` (or `aido serve`) first. The same applies to `npm run e2e:api`.
+
+Every failure mode the spec calls out has a test that reproduces it against the real
+subsystems: timeouts, 429s, exhausted quotas, invalid keys, an empty model catalogue,
+network failures, malformed model output, context overflow, a mid-stream failure, an agent
+that never converges, two agents on the same file, a merge conflict, a failing test run and
+a database that has gone away. Two of those tests found defects rather than confirming
+behaviour: the scheduler used to let two same-lock tasks start in one tick, and Mocha
+output was reported as "no tests ran".
 
 ## Status and known limits
 

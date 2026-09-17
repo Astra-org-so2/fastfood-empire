@@ -31,7 +31,9 @@ npm run dev                 # API :8787 + web :5173 (Vite proxies /api)
 | `npm run lint` / `lint:fix` | ESLint |
 | `npm test` | Vitest: unit + integration (42 tests) |
 | `npm run test:unit` / `test:integration` | Subsets |
+| | Integration suites: `failure-paths` and `failure-modes` cover the failure taxonomy, `workspace-boundaries` covers merge conflicts, failing test runs and storage failures, `agent-state` covers the counters, `worker-lifecycle` covers background runs, `desktop-host` and `static-web` cover the two shells' serving paths |
 | `npm run test:ui` | DOM render tests for every screen against a live API (16 tests) |
+| `npm run test` | Everything: 75 tests across 10 files |
 | `npm run e2e:api` | 60-check end-to-end run against a real listening server |
 | `npm run verify` | typecheck + lint + test |
 | `npm run build:desktop` | Bundles the Electron main/preload (no Electron install needed) |
