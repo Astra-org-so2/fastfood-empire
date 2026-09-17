@@ -29,7 +29,12 @@ export interface TraceRepository {
   list(query?: TraceQuery): LLMTrace[];
   get(traceId: string): LLMTrace | null;
   providerStats(since: string): ProviderStats[];
-  agentStats(since: string): AgentStats[];
+  /**
+   * Per-agent activity. `projectId` scopes it to one project — the roster is shown in the
+   * context of a project, so its numbers must come from that project, not from every
+   * project the installation has ever run.
+   */
+  agentStats(since: string, projectId?: string): AgentStats[];
   modelStats(since: string): (ProviderStats & { modelId: string })[];
   totals(since: string): { requests: number; tokensIn: number; tokensOut: number; avgLatencyMs: number | null; successRate: number | null; failovers: number };
   latencySeries(since: string, granularity: 'minute' | 'hour' | 'day'): MetricTimeseries;
@@ -211,7 +216,9 @@ export function createTraceRepository(db: Database): TraceRepository {
         };
       });
     },
-    agentStats(since) {
+    agentStats(since, projectId) {
+      const projectFilter = projectId ? ' AND project_id = ?' : '';
+      const projectParams = projectId ? [projectId] : [];
       const rows = db.all<Row>(
         `SELECT agent_id,
                 SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS successes,
@@ -220,12 +227,13 @@ export function createTraceRepository(db: Database): TraceRepository {
                 SUM(COALESCE(input_tokens, 0)) AS tokens_in,
                 SUM(COALESCE(output_tokens, 0)) AS tokens_out,
                 COUNT(*) AS requests
-         FROM traces WHERE started_at >= ? AND agent_id IS NOT NULL GROUP BY agent_id`,
-        [since],
+         FROM traces WHERE started_at >= ? AND agent_id IS NOT NULL${projectFilter} GROUP BY agent_id`,
+        [since, ...projectParams],
       );
       const completedRows = db.all<Row>(
-        `SELECT agent_role, COUNT(*) AS c FROM executions WHERE started_at >= ? AND status = 'completed' GROUP BY agent_role`,
-        [since],
+        `SELECT agent_role, COUNT(*) AS c FROM executions
+         WHERE started_at >= ? AND status = 'completed'${projectFilter} GROUP BY agent_role`,
+        [since, ...projectParams],
       );
       const completed = new Map(completedRows.map((r) => [String(r.agent_role), Number(r.c ?? 0)]));
       return rows.map((row) => {

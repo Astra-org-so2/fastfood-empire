@@ -98,7 +98,7 @@ Base conventions:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/projects` | Projects with task counts, run state and last activity. |
-| `POST` | `/api/projects` | Create from a spec: `{ name, description, spec, workspacePath?, sourceRepo?, executionMode?, maxParallelAgents?, freeOnlyMode? }`. |
+| `POST` | `/api/projects` | Create from a spec: `{ name, description, spec, workspacePath?, sourceRepo?, executionMode?, maxParallelAgents?, freeOnlyMode? }`. `spec` is an object, not a paragraph — see below. |
 | `GET` | `/api/projects/:projectId` | Detail: project, counts per status, per-agent counts, run state, memory stats, quota estimate, agent states, pending approvals, git path. |
 | `PATCH` | `/api/projects/:projectId` | Update name/description/status/spec/settings (execution mode, parallelism, enabled agents, token cap, FREE ONLY override). |
 | `DELETE` | `/api/projects/:projectId` | Remove the project and its records (workspace files are left on disk). |
@@ -167,8 +167,26 @@ GET  /api/quotas/groq                  → limits, reset strategy, provenance, o
 
 **Build something**
 
+```jsonc
+// POST /api/projects — `spec` is structured, because the Architect, the Project Manager
+// and every downstream agent read these fields as separate inputs.
+{
+  "name": "Slugkit",
+  "description": "Small TypeScript slug utilities",
+  "spec": {
+    "goal": "Provide two pure slug helpers",
+    "description": "toSlug and uniqueSlug, dependency free",
+    "techStack": ["TypeScript", "Node 22"],
+    "constraints": ["No runtime dependencies"],
+    "nonFunctional": ["Deterministic", "ASCII-only output"],
+    "acceptanceCriteria": ["Empty input returns an empty slug", "Collisions get -2, -3 …"],
+    "targetUsers": "Library authors",
+    "deliverable": "Publishable package with tests and a README"
+  }
+}
 ```
-POST /api/projects                     { name, spec }
+
+```
 POST /api/projects/:id/plan            → architecture + task plan (real model calls)
 POST /api/projects/:id/run             { plan: false }
 GET  /api/projects/:id/graph           → watch the DAG drain

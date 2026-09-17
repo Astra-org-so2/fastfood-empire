@@ -526,7 +526,9 @@ export function registerProviderRoutes(app: FastifyInstance, container: Containe
       // `projectState`/`metrics` aliases are kept so nothing that already reads this route
       // breaks. `state` is echoed with its agentId when a project is given because an agent
       // only has state in the context of one project.
-      const stats = store.traces.agentStats(isoDaysAgo(7));
+      // Scoped to the project being viewed when one is selected: cross-project totals next
+      // to a project's roster read as if they were that project's numbers.
+      const stats = store.traces.agentStats(isoDaysAgo(7), query.projectId);
       return AGENT_ROLES.map((role) => {
         const record = query.projectId ? store.agents.get(query.projectId, role.id) : null;
         const state = record ? { ...record, agentId: role.id, lastActiveAt: record.lastActionAt } : null;
@@ -557,7 +559,7 @@ export function registerProviderRoutes(app: FastifyInstance, container: Containe
       return {
         role,
         state: query.projectId ? store.agents.get(query.projectId, agentId) : null,
-        stats: store.traces.agentStats(isoDaysAgo(30)).find((stat) => stat.agentId === agentId) ?? null,
+        stats: store.traces.agentStats(isoDaysAgo(30), query.projectId).find((stat) => stat.agentId === agentId) ?? null,
         tasks: query.projectId ? store.tasks.listByProject(query.projectId).filter((task) => task.agentRole === agentId) : [],
         recentTraces: store.traces.list({ agentId, limit: limitFrom(request, 25, 200) }),
         busyMs: query.projectId ? store.executions.durationStats(query.projectId, agentId) : null,

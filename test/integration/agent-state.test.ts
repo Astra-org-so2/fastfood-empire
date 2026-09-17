@@ -92,4 +92,32 @@ describe('agent state persistence', () => {
     const working = harness.store.agents.list(project.id).filter((agent) => agent.state === 'working');
     expect(working).toHaveLength(0);
   });
+
+  it('scopes per-agent statistics to the project being viewed', async () => {
+    harness = await createHarness();
+    const project = harness.store.projects.create(sampleProject({ id: 'p-stats', slug: 'stats', workspacePath: `${harness.workspaceRoot}/stats` }));
+    const other = harness.store.projects.create(
+      sampleProject({ id: 'p-other', slug: 'stats-other', workspacePath: `${harness.workspaceRoot}/stats-other`, name: 'Other project' }),
+    );
+
+    await harness.registry.setEnabled('simulated', true);
+    await harness.registry.discoverModels('simulated');
+    await harness.createPlanner().planProject(project);
+    const engine = harness.createEngine({ supervisor: { ...harness.settings.supervisor, maxParallelAgents: 1 } } as never);
+    await engine.runToCompletion(project, { maxTicks: 40 });
+
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const scoped = harness.store.traces.agentStats(since, project.id);
+    const completed = scoped.reduce((total, stat) => total + stat.tasksCompleted, 0);
+    const done = harness.store.tasks.listByProject(project.id).filter((task) => task.status === 'done').length;
+    expect(completed).toBe(done);
+    expect(completed).toBeGreaterThan(0);
+
+    // The roster is shown in the context of one project, so a project that has run nothing
+    // must report nothing rather than inheriting another project's activity.
+    expect(harness.store.traces.agentStats(since, other.id)).toHaveLength(0);
+    // Without a project the numbers are installation-wide, which is what the Performance
+    // screen wants.
+    expect(harness.store.traces.agentStats(since).length).toBeGreaterThanOrEqual(scoped.length);
+  });
 });

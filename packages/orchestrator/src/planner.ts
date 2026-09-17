@@ -91,7 +91,9 @@ export class PlannerService {
     );
 
     const architect = this.options.createAgent('architect');
-    store.tasks.update(architectureTask.id, { status: 'running', startedAt: new Date().toISOString() });
+    const architectureStartedAt = new Date().toISOString();
+    store.tasks.update(architectureTask.id, { status: 'running', startedAt: architectureStartedAt });
+    const architectureExecution = this.startStageExecution(project.id, architectureTask.id, 'architect');
     // The planning stages run an agent just like the scheduler does, so they publish the
     // same state and counters: an architect that is thinking must not read as "idle".
     store.agents.patch(project.id, 'architect', { state: 'working', currentTaskId: architectureTask.id, lastActionAt: new Date().toISOString() });
@@ -108,7 +110,7 @@ export class PlannerService {
         status: 'failed',
         lastError: architectureResult.error ?? 'Architecture stage did not return structured output.',
       });
-      this.settleStage(project.id, 'architect', architectureResult, 'failed');
+      this.settleStage(project.id, 'architect', architectureResult, architectureExecution, 'failed');
       throw new Error(`Architecture stage failed: ${architectureResult.error ?? 'no structured output returned'}`);
     }
 
@@ -133,7 +135,7 @@ export class PlannerService {
       },
       lastModelId: architectureResult.modelId ?? null,
     });
-    this.settleStage(project.id, 'architect', architectureResult, 'completed');
+    this.settleStage(project.id, 'architect', architectureResult, architectureExecution, 'completed');
     events.emit(
       'task.completed',
       { taskId: architectureTask.id, stage: 'architecture', components: architecture.components.length },
@@ -159,8 +161,10 @@ export class PlannerService {
     });
 
     const manager = this.options.createAgent('project_manager');
-    store.tasks.update(planTask.id, { status: 'running', startedAt: new Date().toISOString() });
-    store.agents.patch(project.id, 'project_manager', { state: 'working', currentTaskId: planTask.id, lastActionAt: new Date().toISOString() });
+    const planStartedAt = new Date().toISOString();
+    store.tasks.update(planTask.id, { status: 'running', startedAt: planStartedAt });
+    store.agents.patch(project.id, 'project_manager', { state: 'working', currentTaskId: planTask.id, lastActionAt: planStartedAt });
+    const pmExecution = this.startStageExecution(project.id, planTask.id, 'project_manager');
     const planResult = await manager.run({
       projectId: project.id,
       task: planTask,
@@ -171,7 +175,7 @@ export class PlannerService {
 
     if (planResult.status !== 'completed' || !planResult.structured) {
       store.tasks.update(planTask.id, { status: 'failed', lastError: planResult.error ?? 'no plan returned' });
-      this.settleStage(project.id, 'project_manager', planResult, 'failed');
+      this.settleStage(project.id, 'project_manager', planResult, pmExecution, 'failed');
       throw new Error(`Planning stage failed: ${planResult.error ?? 'no structured output returned'}`);
     }
 
@@ -192,7 +196,7 @@ export class PlannerService {
       },
       lastModelId: planResult.modelId ?? null,
     });
-    this.settleStage(project.id, 'project_manager', planResult, 'completed');
+    this.settleStage(project.id, 'project_manager', planResult, pmExecution, 'completed');
     events.emit(
       'plan.created',
       { taskId: planTask.id, taskCount: created.length, warnings },
@@ -204,11 +208,52 @@ export class PlannerService {
   }
 
   /**
-   * Publishes the outcome of a planning-stage agent run: the agent returns to idle and
-   * its counters move, exactly as they do for a task the scheduler dispatched.
+   * Opens an execution row for a planning stage.
+   *
+   * The architect and the project manager are agents like any other, so their runs belong
+   * in the same place as every other run: the executions table is what the activity view
+   * and the per-agent statistics read, and a stage that only moved a counter would be
+   * visible in one screen and missing from the other.
    */
-  private settleStage(projectId: string, agentId: AgentId, result: AgentRunResult, outcome: 'completed' | 'failed'): void {
+  private startStageExecution(projectId: string, taskId: string, agentId: AgentId): string {
+    const id = crypto.randomUUID();
+    this.options.store.executions.start({
+      id,
+      projectId,
+      taskId,
+      agentRole: agentId,
+      modelId: null,
+      providerId: null,
+      tokenInput: 0,
+      tokenOutput: 0,
+      durationMs: 0,
+      status: 'running',
+      iterations: 0,
+      error: null,
+      outcome: null,
+      traceIds: [],
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+    });
+    return id;
+  }
+
+  /**
+   * Publishes the outcome of a planning-stage agent run: the execution row closes, the
+   * agent returns to idle and its counters move, exactly as they do for a task the
+   * scheduler dispatched.
+   */
+  private settleStage(projectId: string, agentId: AgentId, result: AgentRunResult, executionId: string, outcome: 'completed' | 'failed'): void {
     const tokens = (result.tokenUsage?.input ?? 0) + (result.tokenUsage?.output ?? 0);
+    this.options.store.executions.finish(executionId, {
+      status: outcome === 'completed' ? 'completed' : 'failed',
+      durationMs: result.durationMs,
+      tokenInput: result.tokenUsage?.input ?? 0,
+      tokenOutput: result.tokenUsage?.output ?? 0,
+      iterations: result.iterations ?? 0,
+      error: result.error ?? null,
+      outcome: { stage: true },
+    });
     this.options.store.agents.patch(projectId, agentId, {
       state: 'idle',
       currentTaskId: null,
