@@ -123,6 +123,23 @@ quota burns time and quota for a request that cannot succeed.
   renewable quota and is never spent in FREE ONLY mode.
 - Nothing is inferred from a model's name. A model is only marked free because a
   definition, an API response, or an operator says so — with provenance.
+- `defaultPricing` is how a provider whose API reports no price (Google's Generative
+  Language API is the usual case) is made usable under FREE ONLY, which allows $0 of spend
+  and therefore refuses a model whose cost is *unknown*. It is data, not a guess, and it is
+  only applied to models classified `free_renewable` or `user_hosted`:
+
+  ```jsonc
+  "defaultPricing": {
+    "inputPerMillionTokens": 0,
+    "outputPerMillionTokens": 0,
+    "source": "provider_docs",
+    "note": "Free tier: requests inside the free quota are not billed."
+  }
+  ```
+
+  Leave it out — as every shipped definition does — and such a model stays excluded from
+  FREE ONLY with the reason shown in the routing rationale. Declare a price only when you
+  have confirmed your own key's terms: FREE ONLY trusts this number and will not ask again.
 
 ## Quota semantics
 
@@ -138,7 +155,11 @@ quota burns time and quota for a request that cannot succeed.
 - **Learning.** Rate-limit headers and usage endpoints are parsed after each request and
   recorded as observations. The observed value wins over the configured one. Groq's
   `x-ratelimit-*` headers and OpenRouter's `GET /key` are implemented; others are added by
-  declaring `telemetrySemantics` and mapping headers in the adapter.
+  declaring `telemetrySemantics` and mapping headers in the adapter. A header saying
+  `0` remaining is treated as a hard stop for the window (the provider is put in cooldown
+  until its reset), and a later successful call clears that cooldown — unless it too
+  reports zero left. Both directions are covered by `test/integration/adapters.test.ts`,
+  which drives the adapter against a local HTTP server speaking the real protocol.
 - **Safety margin.** A configurable fraction of each window is reserved and never spent, so
   a batch of parallel tasks cannot overrun a limit mid-run.
 - **Capacity reporting** (`/api/quotas`) reports what remains, on what basis, which

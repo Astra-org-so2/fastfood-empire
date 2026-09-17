@@ -201,6 +201,18 @@ export interface ProviderDefinition {
   };
   /** Documented limits, editable. `null` means "not asserted". */
   quotaLimits: Omit<ModelQuotaLimits, 'provenance'> | null;
+  /**
+   * Cost declared by the operator for providers that do not report pricing, e.g. the
+   * free tier of a provider whose API has no billing endpoint. Only used for models
+   * classified as renewable-free or user-hosted; a paid model's price always comes
+   * from the provider's own metadata.
+   */
+  defaultPricing?: {
+    inputPerMillionTokens: number | null;
+    outputPerMillionTokens: number | null;
+    source: 'user_configured' | 'provider_docs' | 'unknown';
+    note?: string;
+  } | null;
   /** Known model ids with capability hints; discovery augments/overrides this. */
   seedModels?: ProviderSeedModel[];
   /** True when this definition is a local simulator, not a real provider. */

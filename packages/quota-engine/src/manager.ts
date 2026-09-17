@@ -446,7 +446,7 @@ export class QuotaManager {
     modelId: string;
     telemetry: RateLimitTelemetry;
     scopeModel?: string;
-  }): { learned: { requestsLimit: number | null; tokensLimit: number | null }; recorded: boolean } {
+  }): { learned: { requestsLimit: number | null; tokensLimit: number | null }; recorded: boolean; exhausted: boolean } {
     const settings = this.settings();
     const { providerId, telemetry } = input;
     const scopeModel = input.scopeModel ?? '';
@@ -455,7 +455,9 @@ export class QuotaManager {
       telemetry.tokensLimit !== undefined ||
       telemetry.requestsRemaining !== undefined ||
       telemetry.tokensRemaining !== undefined;
-    if (!hasNumbers) return { learned: { requestsLimit: null, tokensLimit: null }, recorded: false };
+    if (!hasNumbers) return { learned: { requestsLimit: null, tokensLimit: null }, recorded: false, exhausted: false };
+    // "0 remaining" is a hard stop for the current window, not a footnote.
+    const exhausted = telemetry.requestsRemaining === 0 || telemetry.tokensRemaining === 0;
 
     this.store.quota.recordObservation({
       providerId,
@@ -470,7 +472,13 @@ export class QuotaManager {
       },
     });
 
-    if (!settings.quota.learnFromHeaders) return { learned: { requestsLimit: telemetry.requestsLimit ?? null, tokensLimit: telemetry.tokensLimit ?? null }, recorded: true };
+    if (!settings.quota.learnFromHeaders) {
+      return {
+        learned: { requestsLimit: telemetry.requestsLimit ?? null, tokensLimit: telemetry.tokensLimit ?? null },
+        recorded: true,
+        exhausted,
+      };
+    }
 
     const record = this.store.providers.get(providerId);
     const semantics = record?.definition.telemetrySemantics;
@@ -516,8 +524,7 @@ export class QuotaManager {
         });
       }
 
-      // A header saying "0 remaining" is a hard stop for the current window.
-      if (telemetry.requestsRemaining === 0 || telemetry.tokensRemaining === 0) {
+      if (exhausted) {
         this.applyCooldown(
           providerId,
           new ProviderError({
@@ -531,7 +538,11 @@ export class QuotaManager {
       }
     }
 
-    return { learned: { requestsLimit: telemetry.requestsLimit ?? null, tokensLimit: telemetry.tokensLimit ?? null }, recorded: true };
+    return {
+      learned: { requestsLimit: telemetry.requestsLimit ?? null, tokensLimit: telemetry.tokensLimit ?? null },
+      recorded: true,
+      exhausted,
+    };
   }
 
   /** Called when a request fails with rate_limit/quota_exhausted. */

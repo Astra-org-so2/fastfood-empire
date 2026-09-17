@@ -29,11 +29,11 @@ npm run dev                 # API :8787 + web :5173 (Vite proxies /api)
 | `npm start` | Runs the built API, which also serves `dist/web` on one port |
 | `npm run typecheck` | `tsc -p tsconfig.json --noEmit` across every package and app |
 | `npm run lint` / `lint:fix` | ESLint |
-| `npm test` | Vitest: unit + integration (65 tests) |
+| `npm test` | Vitest: unit + integration (71 tests) |
 | `npm run test:unit` / `test:integration` | Subsets |
-| | Integration suites: `failure-paths` and `failure-modes` cover the failure taxonomy, `workspace-boundaries` covers merge conflicts, failing test runs and storage failures, `agent-state` covers the counters, `approvals` covers the dangerous-action gate and what a decision does, `worker-lifecycle` covers background runs, `desktop-host` and `static-web` cover the two shells' serving paths |
+| | Integration suites: `failure-paths` and `failure-modes` cover the failure taxonomy, `workspace-boundaries` covers merge conflicts, failing test runs and storage failures, `agent-state` covers the counters, `approvals` covers the dangerous-action gate and what a decision does, `adapters` drives the two real wire protocols against a local HTTP server, `worker-lifecycle` covers background runs, `desktop-host` and `static-web` cover the two shells' serving paths |
 | `npm run test:ui` | DOM render tests for every screen against a live API (16 tests) |
-| `npm run test` | Everything: 81 tests across 11 files |
+| `npm run test` | Everything: 87 tests across 12 files |
 | `npm run e2e:api` | 60-check end-to-end run against a real listening server |
 | `npm run verify` | typecheck + lint + test |
 | `npm run build:desktop` | Bundles the Electron main/preload (no Electron install needed) |
@@ -63,6 +63,12 @@ scripted providers that can be told to return 429s, timeouts, malformed JSON, or
   API-only degraded path, clean shutdown.
 - `agent-state.test.ts` — agent rows are created on first write, counters accumulate
   atomically, and a real run records completed work per agent.
+- `adapters.test.ts` — the real provider protocols, against a local HTTP server that speaks
+  them: catalogue discovery, the exact request that leaves the process (path, bearer/`x-goog-api-key`
+  auth, provider model id, body), Groq-style rate-limit headers becoming learned limits and a
+  real cooldown stop, every HTTP status mapped to the right error category, and a discovery pass
+  never downgrading a price it already knows. None of this was covered while every test ran
+  through the simulator: four defects were hiding here (see README).
 - `approvals.test.ts` — a supervised overwrite is refused while its request is undecided,
   approving it re-queues the paused task and the write finally happens, denying it fails the
   task with the operator's reason and blocks its dependents, expiry never reports a decision,

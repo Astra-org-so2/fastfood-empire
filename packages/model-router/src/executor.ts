@@ -610,13 +610,15 @@ export class LLMExecutor {
     rationale: RoutingRationale,
   ): void {
     const settings = this.options.settings();
+    let providerReportsExhaustion = false;
     if (settings.quota.learnFromHeaders && response.telemetry && Object.keys(response.telemetry).length) {
       try {
-        this.options.quota.ingestTelemetry({
+        const ingested = this.options.quota.ingestTelemetry({
           providerId: candidate.providerId,
           modelId: candidate.model.providerModelId,
           telemetry: response.telemetry,
         });
+        providerReportsExhaustion = ingested.exhausted;
       } catch (err) {
         this.options.logger.warn('failed to ingest rate-limit telemetry', {
           providerId: candidate.providerId,
@@ -625,7 +627,10 @@ export class LLMExecutor {
       }
     }
 
-    this.options.quota.clearCooldown(candidate.providerId);
+    // A successful call proves the provider is usable again — unless it also reported
+    // that nothing is left, in which case clearing the cooldown would undo the stop the
+    // header just asked for.
+    if (!providerReportsExhaustion) this.options.quota.clearCooldown(candidate.providerId);
     this.options.router.recordOutcome({
       providerId: candidate.providerId,
       modelId: candidate.model.providerModelId,

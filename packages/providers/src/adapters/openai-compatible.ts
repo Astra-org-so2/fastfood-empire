@@ -82,7 +82,7 @@ export class OpenAiCompatibleProvider extends BaseProvider {
 
   private async fetchModels(): Promise<ModelInfo[]> {
     const path = this.options.modelsPath ?? this.definition.modelsEndpoint ?? '/models';
-    const response = await this.http.request<unknown>(path, this.requestOptions({ method: 'GET', timeoutMs: 30_000, detectDailyQuota: false }));
+    const response = await this.http.request<unknown>(path, this.requestOptions({ method: 'GET', headers: this.authHeaders(), timeoutMs: 30_000, detectDailyQuota: false }));
     const raw = this.extractRawModels(response.json);
     const models: ModelInfo[] = [];
     for (const entry of raw) {
@@ -152,6 +152,7 @@ export class OpenAiCompatibleProvider extends BaseProvider {
     const body = this.buildBody(request, false);
     const response = await this.http.request<Record<string, unknown>>(this.options.chatPath ?? '/chat/completions', this.requestOptions({
       method: 'POST',
+      headers: this.authHeaders(),
       body,
       timeoutMs: request.timeoutMs ?? this.timeoutMs,
       modelId: request.modelId,
@@ -168,7 +169,12 @@ export class OpenAiCompatibleProvider extends BaseProvider {
       });
     }
 
-    const content = extractContent(choice);
+    // The completion lives in `message` (streaming puts it in `delta`); a few compatible
+    // gateways still answer with a legacy top-level `text`. Reading the choice object
+    // itself — which has none of those fields — silently produced empty completions from
+    // every real OpenAI-compatible provider, so this is asserted by test/integration/adapters.
+    const message = (choice.message ?? choice.delta ?? (choice as Record<string, unknown>)) as Record<string, unknown>;
+    const content = extractContent(message);
     const usage = parseUsage(response.json, this.estimator, request, content);
     this.calibrate(request.modelId, this.estimator.estimateMessages(request.messages, request.modelId).tokens, usage.inputTokens);
 
@@ -195,6 +201,7 @@ export class OpenAiCompatibleProvider extends BaseProvider {
 
     for await (const chunk of this.http.streamBody(this.options.chatPath ?? '/chat/completions', this.requestOptions({
       method: 'POST',
+      headers: this.authHeaders(),
       body,
       timeoutMs: request.timeoutMs ?? this.timeoutMs,
       modelId: request.modelId,
@@ -280,7 +287,7 @@ export class OpenAiCompatibleProvider extends BaseProvider {
     const checkedAt = new Date().toISOString();
     try {
       const started = Date.now();
-      await this.http.request(endpoint, this.requestOptions({ method: 'GET', timeoutMs: 15_000, detectDailyQuota: false }));
+      await this.http.request(endpoint, this.requestOptions({ method: 'GET', headers: this.authHeaders(), timeoutMs: 15_000, detectDailyQuota: false }));
       const latencyMs = Date.now() - started;
       return {
         ok: true,

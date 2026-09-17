@@ -53,6 +53,8 @@ export interface Harness {
   store: Store;
   settings: AppSettings;
   events: EventBus;
+  /** Credential vault, so tests can store a provider key the way the API does. */
+  vault: CredentialVault;
   logger: Logger;
   registry: ProviderRegistry;
   quota: QuotaManager;
@@ -212,6 +214,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     store,
     settings,
     events,
+    vault,
     logger,
     registry,
     quota,

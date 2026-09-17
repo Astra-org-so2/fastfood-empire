@@ -488,9 +488,13 @@ export class ProviderRegistry {
       for (const model of models) {
         const existing = this.store.models.get(model.id);
         if (existing) {
-          // Operator-owned fields (enabled/priority/quality/strengths) survive discovery.
+          // Operator-owned fields (enabled/priority/quality/strengths) survive discovery,
+          // and so does the *better* price: a provider that stops reporting pricing (or
+          // never did) must not wipe a real figure with "unknown", and a declared price
+          // must not overwrite one the API actually reported.
           this.store.models.update(model.id, {
             ...model,
+            pricing: preferredPricing(existing.pricing, model.pricing),
             enabled: existing.enabled,
             priority: existing.priority,
             qualityPrior: existing.qualityPrior,
@@ -617,4 +621,19 @@ export class ProviderRegistry {
       return camelValue ?? match;
     });
   }
+}
+
+/** Ranks pricing provenance so discovery never downgrades a known price. */
+export function preferredPricing(existing: ModelInfo['pricing'], discovered: ModelInfo['pricing']): ModelInfo['pricing'] {
+  const rank: Record<string, number> = {
+    observed_header: 0,
+    api_reported: 1,
+    provider_docs: 2,
+    user_configured: 3,
+    inferred: 4,
+    unknown: 5,
+  };
+  const existingRank = rank[existing.provenance.source] ?? 5;
+  const discoveredRank = rank[discovered.provenance.source] ?? 5;
+  return discoveredRank <= existingRank ? discovered : existing;
 }

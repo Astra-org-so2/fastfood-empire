@@ -177,6 +177,21 @@ export function buildModelInfo(input: {
   const capabilities = inferCapabilities(providerModelId, contextWindow, providerCapabilities, context.capabilities);
   const classification = classifyQuotaType(context);
 
+  /**
+   * A declared price is only used where it cannot contradict the provider's own terms:
+   * a renewable free tier or a locally hosted model has a marginal cost of zero *inside
+   * its free window*, which is where the quota engine keeps requests. Paid and trial
+   * models are never priced from a definition.
+   */
+  const declaredPricing =
+    definition.defaultPricing && (classification.quotaType === 'free_renewable' || classification.quotaType === 'user_hosted')
+      ? definition.defaultPricing
+      : null;
+
+  // `existing` is only present when a caller passes the stored row in; do not read
+  // through it without checking, and never let an unknown price replace a known one.
+  const existingPricing = existing && existing.pricing.provenance.source !== 'unknown' ? existing.pricing : null;
+
   const pricing: ModelInfo['pricing'] = context.pricing
     ? {
         inputPerMillionTokens: context.pricing.inputPerMillionTokens,
@@ -188,11 +203,27 @@ export function buildModelInfo(input: {
           observedAt: new Date().toISOString(),
         },
       }
-    : (existing?.pricing ?? {
-        inputPerMillionTokens: null,
-        outputPerMillionTokens: null,
-        provenance: { source: 'unknown', confidence: 0, note: 'Provider does not publish per-model pricing.' },
-      });
+    : (existingPricing
+        ? existingPricing
+        : declaredPricing
+          ? {
+              inputPerMillionTokens: declaredPricing.inputPerMillionTokens,
+              outputPerMillionTokens: declaredPricing.outputPerMillionTokens,
+              provenance: {
+                source: declaredPricing.source,
+                confidence: declaredPricing.source === 'provider_docs' ? 0.5 : 0.4,
+                reference: definition.documentationUrl ?? undefined,
+                observedAt: new Date().toISOString(),
+                note:
+                  declaredPricing.note ??
+                  'Price declared in the provider definition, not reported by the provider. Edit the definition to change it.',
+              },
+            }
+          : {
+              inputPerMillionTokens: null,
+              outputPerMillionTokens: null,
+              provenance: { source: 'unknown', confidence: 0, note: 'Provider does not publish per-model pricing.' },
+            });
 
   const quota: ModelQuotaLimits = existing?.quota ?? {
     requestsPerMinute: definition.quotaLimits?.requestsPerMinute ?? null,

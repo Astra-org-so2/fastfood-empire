@@ -312,12 +312,18 @@ export function createQuotaRepository(db: Database): QuotaRepository {
       );
     },
     observedLimits(providerId, scopeModel) {
-      const rows = db.all<Row>(
-        `SELECT limit_requests, limit_tokens, observed_at FROM quota_observations
-         WHERE provider_id = ? AND scope_model = ? AND (limit_requests IS NOT NULL OR limit_tokens IS NOT NULL)
-         ORDER BY observed_at DESC LIMIT 20`,
-        [providerId, scopeModel],
-      );
+      const read = (scope: string) =>
+        db.all<Row>(
+          `SELECT limit_requests, limit_tokens, observed_at FROM quota_observations
+           WHERE provider_id = ? AND scope_model = ? AND (limit_requests IS NOT NULL OR limit_tokens IS NOT NULL)
+           ORDER BY observed_at DESC LIMIT 20`,
+          [providerId, scope],
+        );
+      let rows = scopeModel ? read(scopeModel) : [];
+      // Rate-limit headers describe the key/account, not one model, so most observations
+      // are stored provider-scoped. A per-model question must still see them, otherwise
+      // the "observed headers override configured estimates" path silently does nothing.
+      if (!rows.length) rows = read('');
       if (!rows.length) return null;
       // The provider sometimes reports a request-only or token-only limit; take the
       // maximum observed per dimension rather than the newest, because a burst of

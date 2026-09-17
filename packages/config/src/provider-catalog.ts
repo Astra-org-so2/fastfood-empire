@@ -90,6 +90,22 @@ const ProviderDefinitionSchema = z.object({
     })
     .optional(),
   quotaLimits: QuotaLimitsSchema.nullable(),
+  /**
+   * Declared cost per million tokens for providers that do not publish pricing in
+   * their API (Google's Generative Language API is the common case). Without it a
+   * model's cost is unknown, and FREE ONLY — which allows $0 of spend — excludes it.
+   * Applied only to models classified as renewable-free or user-hosted: declaring a
+   * price for a paid model is what the provider's own metadata is for.
+   */
+  defaultPricing: z
+    .object({
+      inputPerMillionTokens: z.number().nullable(),
+      outputPerMillionTokens: z.number().nullable(),
+      source: z.enum(['user_configured', 'provider_docs', 'unknown']).default('user_configured'),
+      note: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
   seedModels: z
     .array(
       z.object({
