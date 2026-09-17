@@ -70,6 +70,32 @@ with a project claim file, crash recovery (tasks left `running` are re-queued) a
 on shutdown. The desktop app, the headless worker and the API all start the same scheduler —
 that is why background agents work identically in both shells.
 
+### Dangerous actions and approvals
+
+Step 6 is where a tool can stop and ask. The order matters:
+
+1. the tool raises a request through `RunEngine`, which persists an `approvals` row and sets
+   the task to `paused` / the agent to `waiting`;
+2. the callback returns **`null`** — a *request* is not a *permission*. The tool refuses the
+   action and the agent reports that it is blocked, so nothing destructive happens while the
+   operator is still reading the prompt;
+3. the decision arrives later: `POST /api/approvals/:id/decide` calls `ApprovalService.decide`,
+   which fires `onDecided` — wired in `container.ts` to `ProjectRunner.settleApproval`.
+   Approving puts the task back to `ready`, emits `task.unblocked` and wakes the run, which
+   re-runs the task with the approved action keys in `grantedApprovals`, so the same call now
+   succeeds. Denying fails the task with the operator's reason and cascades `blocked` to its
+   dependents instead of leaving them waiting on work that can never finish;
+4. an *expired* request is not a decision and never reaches `onDecided` — expiry is reported
+   as its own status, and `waitForDecision` resolves it as "no".
+
+How far a grant reaches is part of the decision, not a UI label: `approvals.decision_scope`
+records `once` or `task`, and `grantedApprovalKeys` honours a `once` grant only for the
+attempt the request was raised in (the dispatcher stamps `grantedForAttempt` on the payload
+when it asks) while a `task` grant applies to every later attempt of that task.
+
+A decision is persisted before the handler runs, and a throwing handler is logged rather than
+propagated, so an approved/denied row can never be half-applied from the operator's point of view.
+
 ## 4. The quota engine
 
 The most safety-critical component. Design:

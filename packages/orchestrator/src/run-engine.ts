@@ -198,6 +198,21 @@ export class RunEngine {
     };
   }
 
+  /**
+   * Marks everything that depends on `taskId` as blocked.
+   *
+   * Used when a task stops for a reason outside the scheduler's own loop — a denied
+   * approval, most importantly. Its dependents would otherwise sit in `blocked` waiting
+   * for a task that is never going to finish, and the run would idle out with no
+   * explanation of why.
+   */
+  blockDependents(projectId: string, taskId: string, reason: string): void {
+    const project = this.options.store.projects.get(projectId);
+    const task = this.options.store.tasks.get(taskId);
+    if (!project || !task) return;
+    this.cascadeBlock(project, task, reason);
+  }
+
   /** Runs the loop until the project is complete, stopped, or the tick cap is hit. */
   async runToCompletion(project: Project, options: { maxTicks?: number } = {}): Promise<TickResult[]> {
     const results: TickResult[] = [];
@@ -324,7 +339,7 @@ export class RunEngine {
     }
 
     const agent = this.options.createAgent(agentId);
-    const granted = this.grantedApprovalKeys(project.id, task.id);
+    const granted = this.grantedApprovalKeys(project.id, task.id, attempt);
 
     let result: AgentRunResult;
     try {
@@ -336,20 +351,27 @@ export class RunEngine {
         grantedApprovals: granted,
         limitsOverride: this.supervisorLimits(),
         requestApproval: async (request) => {
-          const approval = this.options.approvals.request({
+          this.options.approvals.request({
             projectId: project.id,
             taskId: task.id,
             agentId,
             action: request.action,
             reason: request.reason,
             risk: request.risk,
-            payload: request.payload,
+            // The attempt this grant would unblock: an approval scoped to a single step
+            // is honoured on that attempt and nowhere else.
+            payload: { ...request.payload, grantedForAttempt: attempt + 1 },
           });
-          // 'paused' is the persisted signal that a task is waiting on a human;
-          // the pending approval row carries the detail.
+          // 'paused' is the persisted signal that a task is waiting on a human; the pending
+          // approval row carries the detail.
           store.tasks.update(task.id, { status: 'paused' });
           store.agents.patch(project.id, agentId, { state: 'waiting', lastActionAt: new Date().toISOString() });
-          return approval;
+          // Returning null is the whole point of the gate: a request is not a permission.
+          // The tool sees "no approval", refuses the action, and the agent reports that it
+          // is blocked. Handing back the request object here would let a destructive write
+          // proceed while the operator is still reading the prompt — the approval row would
+          // look pending in the UI at the same time as the file was already overwritten.
+          return null;
         },
       });
     } finally {
@@ -576,15 +598,25 @@ export class RunEngine {
   }
 
   /**
-   * Rebuilds the set of already-granted action keys for a task, so a resumed task
-   * does not ask for the same approval twice.
+   * Rebuilds the set of action keys this attempt may perform without asking again.
+   *
+   * A grant's reach depends on how the operator answered the prompt:
+   *  - `task` — "approve this for the rest of the task": valid on every later attempt;
+   *  - `once` — "approve this step": valid only for the attempt the request was raised
+   *    in, which is what the dispatcher stored in `grantedForAttempt` when it asked.
+   *
+   * The distinction is the whole point of offering the choice: without it, approving one
+   * write would silently license the same destructive call on every future retry.
    */
-  private grantedApprovalKeys(projectId: string, taskId: string): Set<string> {
+  private grantedApprovalKeys(projectId: string, taskId: string, attempt: number): Set<string> {
     const keys = new Set<string>();
     for (const approval of this.options.store.approvals.list(projectId, 500)) {
       if (approval.taskId !== taskId || approval.status !== 'approved') continue;
       const key = approval.payload?.key;
-      if (typeof key === 'string') keys.add(key);
+      if (typeof key !== 'string') continue;
+      const scopedToTask = approval.decisionScope === 'task' || approval.decisionScope === null;
+      const grantedForAttempt = approval.payload?.grantedForAttempt;
+      if (scopedToTask || grantedForAttempt === attempt) keys.add(key);
     }
     return keys;
   }

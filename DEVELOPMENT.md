@@ -29,11 +29,11 @@ npm run dev                 # API :8787 + web :5173 (Vite proxies /api)
 | `npm start` | Runs the built API, which also serves `dist/web` on one port |
 | `npm run typecheck` | `tsc -p tsconfig.json --noEmit` across every package and app |
 | `npm run lint` / `lint:fix` | ESLint |
-| `npm test` | Vitest: unit + integration (42 tests) |
+| `npm test` | Vitest: unit + integration (65 tests) |
 | `npm run test:unit` / `test:integration` | Subsets |
-| | Integration suites: `failure-paths` and `failure-modes` cover the failure taxonomy, `workspace-boundaries` covers merge conflicts, failing test runs and storage failures, `agent-state` covers the counters, `worker-lifecycle` covers background runs, `desktop-host` and `static-web` cover the two shells' serving paths |
+| | Integration suites: `failure-paths` and `failure-modes` cover the failure taxonomy, `workspace-boundaries` covers merge conflicts, failing test runs and storage failures, `agent-state` covers the counters, `approvals` covers the dangerous-action gate and what a decision does, `worker-lifecycle` covers background runs, `desktop-host` and `static-web` cover the two shells' serving paths |
 | `npm run test:ui` | DOM render tests for every screen against a live API (16 tests) |
-| `npm run test` | Everything: 75 tests across 10 files |
+| `npm run test` | Everything: 81 tests across 11 files |
 | `npm run e2e:api` | 60-check end-to-end run against a real listening server |
 | `npm run verify` | typecheck + lint + test |
 | `npm run build:desktop` | Bundles the Electron main/preload (no Electron install needed) |
@@ -63,6 +63,11 @@ scripted providers that can be told to return 429s, timeouts, malformed JSON, or
   API-only degraded path, clean shutdown.
 - `agent-state.test.ts` — agent rows are created on first write, counters accumulate
   atomically, and a real run records completed work per agent.
+- `approvals.test.ts` — a supervised overwrite is refused while its request is undecided,
+  approving it re-queues the paused task and the write finally happens, denying it fails the
+  task with the operator's reason and blocks its dependents, expiry never reports a decision,
+  a listener that throws cannot un-decide an approval, and a "once" grant is not reused by a
+  later attempt while a "task" grant is.
 
 **3. Screen render tests** (`test/ui/`) — every screen and project tab is mounted in jsdom
 against a **live API** and must reach a rendered state without crashing or showing an error

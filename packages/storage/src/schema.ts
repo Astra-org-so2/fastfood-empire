@@ -526,4 +526,15 @@ CREATE INDEX IF NOT EXISTS idx_traces_status ON traces(status, started_at);
 CREATE INDEX IF NOT EXISTS idx_events_type_time ON events(type, at);
 `,
   },
+  {
+    version: 4,
+    name: 'approval_decision_scope',
+    up: `
+-- How far an approval reaches. The UI has always offered "approve once" versus "approve
+-- for the rest of this task"; without a column the decision handler could not tell them
+-- apart, so both silently meant "for the task". Existing rows keep NULL: a decision made
+-- before the column existed is treated as task-scoped, which is how it behaved.
+ALTER TABLE approvals ADD COLUMN decision_scope TEXT;
+`,
+  },
 ];

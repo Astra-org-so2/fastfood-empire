@@ -36,7 +36,7 @@ Base conventions:
 | `GET` | `/api/events` | The persisted event log (filters: `type`, `projectId`, `taskId`, `agentId`, `severity`, `since`, `limit`). |
 | `GET` | `/api/events/stream` | **Server-sent events.** One JSON event per frame, used by the UI for live updates. Reconnect is the client's job; the stream sends a heartbeat so proxies do not close it. |
 | `GET` | `/api/approvals` | Pending approvals (optionally by project). |
-| `POST` | `/api/approvals/:approvalId/decide` | `{ decision: 'approve' \| 'reject', reason? }`. Resumes or fails the blocked task. |
+| `POST` | `/api/approvals/:approvalId/decide` | `{ approved: boolean, note?, scope?: 'once' \| 'task' }` (default `once`). Approving puts the blocked task back to `ready` and wakes the run so it re-runs with this action granted — `once` only for that resumed attempt, `task` for every later attempt of the task; denying fails the task with the note as its reason and blocks its dependents. Returns the decided request with its `decisionScope`; 404 when the id is unknown or already decided. |
 | `GET` | `/api/tasks/:taskId` | One task with its dependency statuses and execution history. |
 | `PATCH` | `/api/tasks/:taskId` | Edit a task (title, description, priority, agent, type, dependencies, max attempts, status). |
 | `DELETE` | `/api/tasks/:taskId` | Delete a task and its dependency edges. |

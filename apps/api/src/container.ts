@@ -166,7 +166,15 @@ export function createContainer(options: ContainerOptions = {}): Container {
 
   const memory = new ProjectMemory(store);
   const contextBuilder = new ContextBuilder({ store, memory, logger });
-  const approvals = new ApprovalService({ store, events, logger });
+  // The decision handler is wired after the runner exists (they reference each other):
+  // approving an action queues the blocked task again, denying it fails the task.
+  let runnerRef: ProjectRunner | null = null;
+  const approvals = new ApprovalService({
+    store,
+    events,
+    logger,
+    onDecided: (request, decision) => runnerRef?.settleApproval(request, decision),
+  });
 
   const createAgent = (agentId: AgentId) =>
     new BaseAgent({
@@ -283,6 +291,7 @@ export function createContainer(options: ContainerOptions = {}): Container {
 
   const systemMetrics = new SystemMetricsCollector({ diskPath: config.dataDir, intervalMs: 0 });
 
+  runnerRef = runner;
   const maintenance = setInterval(() => runner.maintenance(), 60_000);
   maintenance.unref?.();
 

@@ -22,7 +22,7 @@ import { QuotaManager } from '@aido/quota-engine';
 import { LLMExecutor, ModelRouter } from '@aido/model-router';
 import { ContextBuilder, ProjectMemory } from '@aido/project-memory';
 import { BaseAgent, DEFAULT_TEAM } from '@aido/agents';
-import { ApprovalService, PlannerService, RunEngine } from '@aido/orchestrator';
+import { ApprovalService, PlannerService, ProjectRunner, RunEngine } from '@aido/orchestrator';
 import { GitRepository } from '@aido/git';
 import { Workspace } from '@aido/sandbox';
 
@@ -66,6 +66,11 @@ export interface Harness {
   gitFor: (branch?: string) => GitRepository;
   createEngine: (overrides?: Partial<AppSettings>) => RunEngine;
   createPlanner: () => PlannerService;
+  /**
+   * Runner wired exactly like the API container: the approval service reports decisions
+   * back into the runner, so a test can prove that a decision is not just a row update.
+   */
+  createRunner: (options?: { intervalMs?: number; maxTicks?: number; engineFactory?: (project: Project) => RunEngine }) => ProjectRunner;
   close: () => void;
 }
 
@@ -125,7 +130,13 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   const executor = new LLMExecutor({ store, registry, quota, router, events, settings: () => settings, logger });
   const memory = new ProjectMemory(store);
   const contextBuilder = new ContextBuilder({ store, memory, logger });
-  const approvals = new ApprovalService({ store, events, logger });
+  let runnerRef: ProjectRunner | null = null;
+  const approvals = new ApprovalService({
+    store,
+    events,
+    logger,
+    onDecided: (request, decision) => runnerRef?.settleApproval(request, decision),
+  });
 
   const workspaceFor = () => new Workspace({ rootPath: workspaceRoot, settings: () => settings, executionMode: () => settings.executionMode, logger });
   const gitFor = () => new GitRepository({ path: workspaceRoot, logger, authorName: 'AI Dev Orchestrator', authorEmail: 'agents@aido.local' });
@@ -158,6 +169,42 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
 
   const createPlanner = () => new PlannerService({ store, memory, events, logger, createAgent, workspaceFor, gitFor });
 
+  const defaultEngineFactory = (project: Project) =>
+    new RunEngine({
+      store,
+      events,
+      logger,
+      settings: () => {
+        const supervisor = project.settings.maxParallelAgents
+          ? { ...settings.supervisor, maxParallelAgents: project.settings.maxParallelAgents }
+          : settings.supervisor;
+        return { ...settings, supervisor, freeOnlyMode: project.settings.freeOnlyMode ?? settings.freeOnlyMode };
+      },
+      memory,
+      createAgent,
+      workspaceFor,
+      gitFor,
+      approvals: { request: (input) => approvals.request(input) },
+    });
+
+  const createRunner = (options: { intervalMs?: number; maxTicks?: number; engineFactory?: (project: Project) => RunEngine } = {}): ProjectRunner => {
+    const runner = new ProjectRunner({
+      store,
+      events,
+      logger,
+      settings: () => settings,
+      engineFactory: options.engineFactory ?? defaultEngineFactory,
+      planProject: async (project) => {
+        const result = await createPlanner().planProject(project);
+        return { createdTasks: result.createdTasks as unknown[] };
+      },
+      intervalMs: options.intervalMs ?? 25,
+      maxTicks: options.maxTicks ?? 400,
+    });
+    runnerRef = runner;
+    return runner;
+  };
+
   return {
     root,
     dataDir,
@@ -178,7 +225,9 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     gitFor,
     createEngine,
     createPlanner,
+    createRunner,
     close: () => {
+      runnerRef = null;
       approvals.dispose();
       store.close();
       fs.rmSync(root, { recursive: true, force: true });

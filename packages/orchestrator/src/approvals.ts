@@ -24,6 +24,13 @@ export interface ApprovalServiceOptions {
   pollIntervalMs?: number;
   /** How long a request stays open before it expires. */
   ttlMs?: number;
+  /**
+   * Called once a request has been decided, so the work that was blocked can continue or
+   * be failed. Without this the decision would only change a row: the task that asked for
+   * permission would stay paused forever and the operator would have to notice and restart
+   * the run by hand.
+   */
+  onDecided?: (request: ApprovalRequest, decision: 'approved' | 'denied') => void;
 }
 
 export class ApprovalService {
@@ -68,13 +75,19 @@ export class ApprovalService {
     return request;
   }
 
-  decide(approvalId: string, decision: 'approved' | 'denied', decidedBy: string, note?: string): ApprovalRequest | null {
-    const request = this.options.store.approvals.decide(approvalId, decision, decidedBy, note ?? null);
+  decide(
+    approvalId: string,
+    decision: 'approved' | 'denied',
+    decidedBy: string,
+    note?: string,
+    scope: 'once' | 'task' = 'once',
+  ): ApprovalRequest | null {
+    const request = this.options.store.approvals.decide(approvalId, decision, decidedBy, note ?? null, scope);
     if (!request) return null;
 
     this.options.events.emit(
       'approval.decided',
-      { approvalId: request.id, decision, decidedBy, note: note ?? null },
+      { approvalId: request.id, decision, decidedBy, note: note ?? null, scope: request.decisionScope },
       {
         message: `${decision === 'approved' ? 'Approved' : 'Denied'}: ${request.action}${note ? ` — ${note}` : ''}`,
         severity: decision === 'approved' ? 'info' : 'warning',
@@ -89,6 +102,21 @@ export class ApprovalService {
       clearTimeout(waiter.timer);
       this.waiters.delete(approvalId);
       waiter.resolve(decision === 'approved' ? request : null);
+    }
+
+    // `expired` is a decision the operator did not make, and it must not be reported to the
+    // caller as an approval or a refusal of a specific action.
+    if (decision === 'approved' || decision === 'denied') {
+      try {
+        this.options.onDecided?.(request, decision);
+      } catch (err) {
+        // A listener that throws must not make the decision itself fail: the row is already
+        // written and the UI already shows it.
+        this.options.logger.error('approval decision handler failed', {
+          approvalId: request.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
     return request;
   }

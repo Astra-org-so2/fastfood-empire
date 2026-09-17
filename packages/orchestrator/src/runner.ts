@@ -1,4 +1,4 @@
-import type { AppSettings, Project } from '@aido/types';
+import type { AppSettings, ApprovalRequest, Project } from '@aido/types';
 import type { EventBus, Logger } from '@aido/observability';
 import type { Store } from '@aido/storage';
 import type { RunEngine, TickResult } from './run-engine.js';
@@ -145,6 +145,71 @@ export class ProjectRunner {
     // A resumed run whose loop already exited needs a fresh loop.
     if (!this.loops.has(projectId)) void this.start(projectId, { plan: false });
     return this.status(projectId);
+  }
+
+  /**
+   * Continues (or closes) the work a decision was blocking.
+   *
+   * A pending approval is a paused task: the entity that asked for permission is still
+   * sitting there, and the run has usually idled out behind it. Granting it has to queue
+   * the task again and wake the run, and refusing it has to fail the task and release its
+   * dependents — otherwise "approve" only changes a badge in the UI and the project stalls
+   * with no way forward that the operator can see.
+   */
+  settleApproval(request: ApprovalRequest, decision: 'approved' | 'denied'): void {
+    const { store, events } = this.options;
+    if (!request.taskId) return;
+    const task = store.tasks.get(request.taskId);
+    if (!task) return;
+    const projectId = task.projectId;
+    const now = new Date().toISOString();
+
+    if (decision === 'approved') {
+      if (task.status === 'paused') {
+        store.tasks.update(task.id, { status: 'ready', lastError: null });
+      }
+      events.emit(
+        'task.unblocked',
+        { taskId: task.id, reason: 'approval granted', approvalId: request.id },
+        {
+          message: `Approval granted for "${task.title}"; queued to continue`,
+          projectId,
+          taskId: task.id,
+          agentId: task.agentRole,
+        },
+      );
+      this.wakeRun(projectId);
+      return;
+    }
+
+    store.tasks.update(task.id, {
+      status: 'failed',
+      lastError: `Denied by the operator: ${request.action}${request.decisionNote ? ` — ${request.decisionNote}` : ''}`,
+    });
+    store.agents.patch(projectId, task.agentRole, { state: 'idle', currentTaskId: null, lastActionAt: now });
+    this.engineFor(projectId)?.blockDependents(projectId, task.id, 'a required approval was denied');
+    events.emit(
+      'task.failed',
+      { taskId: task.id, agentId: task.agentRole, error: 'approval denied' },
+      {
+        message: `${task.title}: denied by the operator, so the task cannot complete`,
+        projectId,
+        taskId: task.id,
+        agentId: task.agentRole,
+        severity: 'error',
+      },
+    );
+    this.wakeRun(projectId);
+  }
+
+  /**
+   * Restarts the loop for a project that is waiting on a human, unless the operator
+   * deliberately stopped it — in that case the queued work waits for their next Run.
+   */
+  private wakeRun(projectId: string): void {
+    const signal = this.options.store.runSignals.get(projectId);
+    if (signal.cancelRequested === true || signal.runState === 'stopping') return;
+    this.resume(projectId);
   }
 
   status(projectId: string): RunStatus {

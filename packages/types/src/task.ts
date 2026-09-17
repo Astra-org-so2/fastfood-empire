@@ -169,6 +169,11 @@ export interface ApprovalRequest {
   decidedAt: string | null;
   decidedBy: string | null;
   decisionNote: string | null;
+  /**
+   * How far the decision reaches: `once` covers the paused step (the next attempt of the
+   * task), `task` covers the rest of that task. Null while the request is undecided.
+   */
+  decisionScope: 'once' | 'task' | null;
 }
 
 export type ExecutionMode = 'auto' | 'supervised' | 'manual';

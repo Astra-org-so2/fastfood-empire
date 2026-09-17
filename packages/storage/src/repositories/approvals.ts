@@ -4,9 +4,15 @@ import type { Database, Row } from '../db.js';
 import { nowIso, parseJson } from './helpers.js';
 
 export interface ApprovalRepository {
-  request(input: Omit<ApprovalRequest, 'id' | 'requestedAt' | 'decidedAt' | 'decidedBy' | 'decisionNote' | 'status'> & { expiresAt?: string | null }): ApprovalRequest;
+  request(input: Omit<ApprovalRequest, 'id' | 'requestedAt' | 'decidedAt' | 'decidedBy' | 'decisionNote' | 'decisionScope' | 'status'> & { expiresAt?: string | null }): ApprovalRequest;
   get(id: string): ApprovalRequest | null;
-  decide(id: string, decision: 'approved' | 'denied' | 'expired', decidedBy: string, note: string | null): ApprovalRequest | null;
+  decide(
+    id: string,
+    decision: 'approved' | 'denied' | 'expired',
+    decidedBy: string,
+    note: string | null,
+    scope?: 'once' | 'task',
+  ): ApprovalRequest | null;
   listPending(projectId?: string): ApprovalRequest[];
   list(projectId: string, limit?: number): ApprovalRequest[];
   hasPendingForTask(taskId: string): ApprovalRequest | null;
@@ -28,6 +34,7 @@ function map(row: Row): ApprovalRequest {
     decidedAt: row.decided_at === null ? null : String(row.decided_at),
     decidedBy: row.decided_by === null ? null : String(row.decided_by),
     decisionNote: row.decision_note === null ? null : String(row.decision_note),
+    decisionScope: row.decision_scope === null || row.decision_scope === undefined ? null : (String(row.decision_scope) as ApprovalRequest['decisionScope']),
   };
 }
 
@@ -42,6 +49,7 @@ export function createApprovalRepository(db: Database): ApprovalRepository {
         decidedAt: null,
         decidedBy: null,
         decisionNote: null,
+        decisionScope: null,
       };
       db.run(
         `INSERT INTO approvals (id, project_id, task_id, agent_id, action, reason, risk, payload, status, requested_at, decided_at, decided_by, decision_note, expires_at)
@@ -65,17 +73,21 @@ export function createApprovalRepository(db: Database): ApprovalRepository {
       const row = db.get<Row>('SELECT * FROM approvals WHERE id = ?', [id]);
       return row ? map(row) : null;
     },
-    decide(id, decision, decidedBy, note) {
+    decide(id, decision, decidedBy, note, scope) {
       const existing = this.get(id);
       if (!existing) return null;
-      db.run('UPDATE approvals SET status = ?, decided_at = ?, decided_by = ?, decision_note = ? WHERE id = ?', [
+      const decidedAt = nowIso();
+      // An expiry is a timeout, not a verdict: it has no reach, so it never carries a scope.
+      const decisionScope = decision === 'approved' ? (scope ?? 'once') : null;
+      db.run('UPDATE approvals SET status = ?, decided_at = ?, decided_by = ?, decision_note = ?, decision_scope = ? WHERE id = ?', [
         decision,
-        nowIso(),
+        decidedAt,
         decidedBy,
         note,
+        decisionScope,
         id,
       ]);
-      return { ...existing, status: decision, decidedAt: nowIso(), decidedBy, decisionNote: note };
+      return { ...existing, status: decision, decidedAt, decidedBy, decisionNote: note, decisionScope };
     },
     listPending(projectId) {
       const rows = projectId

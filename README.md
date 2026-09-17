@@ -188,7 +188,7 @@ packages/
 
 ```bash
 npm run typecheck                        # tsc across all packages and the app
-npm run test                             # 75 unit + integration tests (59 + 16 screens)
+npm run test                             # 81 unit + integration tests (65 + 16 screens)
 npm run test:ui                          # the 16 screen render tests on their own
 npm run e2e:api                          # 60 checks against a real listening server
 npm run package:deb                      # build the Debian package from the built bundles
@@ -206,7 +206,12 @@ network failures, malformed model output, context overflow, a mid-stream failure
 that never converges, two agents on the same file, a merge conflict, a failing test run and
 a database that has gone away. Two of those tests found defects rather than confirming
 behaviour: the scheduler used to let two same-lock tasks start in one tick, and Mocha
-output was reported as "no tests ran".
+output was reported as "no tests ran", and a SUPERVISED overwrite used to proceed while its
+approval was still pending. The approval path is now covered end to end: the tool refuses
+while the request is undecided, approving it re-queues the blocked task and the same call
+succeeds, denying it fails the task with the operator's reason and releases its dependents,
+and the scope the operator picked is honoured — "once" covers the resumed attempt, "task"
+covers the rest of the work.
 
 ## Status and known limits
 

@@ -698,7 +698,7 @@ export function registerProviderRoutes(app: FastifyInstance, container: Containe
         request.body,
         'decision',
       );
-      const approval = container.approvals.decide(approvalId, body.approved ? 'approved' : 'denied', body.scope === 'task' ? 'operator (scope: task)' : 'operator', body.note);
+      const approval = container.approvals.decide(approvalId, body.approved ? 'approved' : 'denied', 'operator', body.note, body.scope);
       if (!approval) throw ApiError.notFound(`Approval ${approvalId} not found or already decided.`);
       return approval;
     }),
