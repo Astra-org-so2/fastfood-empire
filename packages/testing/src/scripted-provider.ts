@@ -179,9 +179,19 @@ export class ScriptedProvider extends BaseProvider {
           modelId: request.modelId,
         });
 
+      case 'invalid_key':
+        // A rejected key fails the request as well as the credential check: a real provider
+        // answers 401 here, and code that only handles the check would look correct while
+        // failing in production.
+        throw new ProviderError({
+          category: 'authentication',
+          message: 'Scripted 401 Unauthorized: the credential was rejected.',
+          providerId: this.id,
+          modelId: request.modelId,
+        });
+
       case 'models':
       case 'no_models':
-      case 'invalid_key':
         return this.ok(request, 'Scripted response.');
 
       case 'stream':

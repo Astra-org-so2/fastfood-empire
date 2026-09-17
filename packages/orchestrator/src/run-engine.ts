@@ -113,13 +113,21 @@ export class RunEngine {
     const parallel = Math.max(1, this.options.settings().supervisor.maxParallelAgents);
     const capacity = Math.max(0, parallel - this.active.size);
     if (capacity > 0) {
-      const inFlightLocks = this.activeLocks();
-      const candidates = store.tasks
-        .readyTasks(project.id)
-        .filter((task) => task.status === 'ready')
-        .filter((task) => !store.agents.get(project.id, task.agentRole)?.paused)
-        .filter((task) => !conflicts(task.resourceLocks, inFlightLocks))
-        .slice(0, capacity);
+      // Locks are claimed as the batch is built, not only from tasks already in flight:
+      // two tasks that share a lock can both be ready in the same tick, and filtering each
+      // of them against a snapshot taken before either started would let both run at once.
+      // That is precisely the conflicting-edit case the locks exist to prevent (§17, §48),
+      // so the second one waits for the next tick instead.
+      const heldLocks = [...this.activeLocks()];
+      const candidates: ReturnType<typeof store.tasks.readyTasks> = [];
+      for (const task of store.tasks.readyTasks(project.id)) {
+        if (candidates.length >= capacity) break;
+        if (task.status !== 'ready') continue;
+        if (store.agents.get(project.id, task.agentRole)?.paused) continue;
+        if (conflicts(task.resourceLocks, heldLocks)) continue;
+        candidates.push(task);
+        heldLocks.push(...task.resourceLocks);
+      }
 
       for (const task of candidates) {
         const promise = this.runTask(project, task)

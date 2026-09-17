@@ -762,6 +762,18 @@ export function parseTestCounts(output: string): {
         passed = Number(pytest[1] ?? 0);
         failed = Number(pytest[2] ?? 0);
         skipped = Number(pytest[3] ?? 0);
+      } else {
+        // Mocha reports "3 passing / 1 failing / 2 pending" on separate lines, and does not
+        // use the word "passed" at all. Without this it would be reported as "no tests ran",
+        // which reads as an empty suite rather than a failing one.
+        const mochaPassed = output.match(/(\d+)\s+passing/i);
+        const mochaFailed = output.match(/(\d+)\s+failing/i);
+        const mochaPending = output.match(/(\d+)\s+pending/i);
+        if (mochaPassed || mochaFailed) {
+          passed = Number(mochaPassed?.[1] ?? 0);
+          failed = Number(mochaFailed?.[1] ?? 0);
+          skipped = Number(mochaPending?.[1] ?? 0);
+        }
       }
     }
   }
