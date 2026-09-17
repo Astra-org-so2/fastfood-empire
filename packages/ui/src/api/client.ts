@@ -553,7 +553,17 @@ export interface SettingsResponse {
     maxParallelAgents: number;
     adapterKinds: string[];
   };
-  counts: { projects: number; providers: number; models: number; agents: number; openReservations: number; databaseBytes: number };
+  counts: {
+    projects: number;
+    providers: number;
+    models: number;
+    /** Every declared role. */
+    agents: number;
+    /** The subset a new project starts with. */
+    agentsInDefaultTeam: number;
+    openReservations: number;
+    databaseBytes: number;
+  };
 }
 
 export interface EventsEnvelope {

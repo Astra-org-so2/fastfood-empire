@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Badge, Button, Checkbox, cx, ErrorState, formatBytes, formatPercent, Input, LoadingRows, Panel, Select } from '@aido/ui';
 import type { AgentId, TaskType } from '@aido/types';
+import type { SettingsResponse } from '@aido/ui';
 import { api, useAgents, useHealth, usePlatform, useRouterPolicy, useRouterPolicyMutation, useSettings, useSettingsMutation } from '../lib/api.js';
 import { KeyValue, Mono, PageHeader, ProjectPicker, Section, TimeAgo, useProjectSelection } from '../components/common.js';
 
@@ -615,8 +616,10 @@ function DiagnosticsPanel({
   diagnostics: {
     platform: Awaited<ReturnType<typeof api.platform>> | undefined;
     health: Awaited<ReturnType<typeof api.health>> | undefined;
-    counts: { projects: number; providers: number; models: number; agents: number; openReservations: number; databaseBytes: number };
-    capabilities: { shell: { kind: string; platform: string; isDesktop: boolean }; secretSource: string; maxParallelAgents: number; adapterKinds: string[] };
+    // Typed from the response rather than restated here: a field added to the API used to
+    // leave this copy behind, and the panel then showed a stale or nonsensical label.
+    counts: SettingsResponse['counts'];
+    capabilities: SettingsResponse['capabilities'];
     agents: number;
   };
   onToast: (message: string) => void;
@@ -644,7 +647,7 @@ function DiagnosticsPanel({
             { label: 'Projects', value: diagnostics.counts.projects },
             { label: 'Providers', value: `${diagnostics.counts.providers} definitions, ${diagnostics.capabilities.adapterKinds.length} adapter kinds` },
             { label: 'Models', value: diagnostics.counts.models },
-            { label: 'Agent roles', value: `${diagnostics.counts.agents} enabled of ${diagnostics.counts.agents}` },
+            { label: 'Agent roles', value: `${diagnostics.counts.agents} declared, ${diagnostics.counts.agentsInDefaultTeam} in the default team, ${diagnostics.agents} on the roster` },
             { label: 'Open reservations', value: diagnostics.counts.openReservations },
             { label: 'Credential storage', value: diagnostics.capabilities.secretSource === 'env' ? 'master key from environment' : diagnostics.platform?.secrets.credentialVault.keyFile ?? 'master key file' },
             { label: 'Shell secret store', value: diagnostics.platform ? `${diagnostics.platform.secrets.shellStore.kind} — ${diagnostics.platform.secrets.shellStore.detail}` : '—' },

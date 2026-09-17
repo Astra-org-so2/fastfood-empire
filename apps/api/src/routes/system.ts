@@ -821,6 +821,8 @@ export function registerProviderRoutes(app: FastifyInstance, container: Containe
         providers: store.providers.list().length,
         models: store.models.countByProvider().reduce((sum, entry) => sum + entry.total, 0),
         agents: AGENT_ROLES.length,
+        /** Roles a new project starts with, which is a smaller set than the roster. */
+        agentsInDefaultTeam: DEFAULT_TEAM.length,
         openReservations: store.quota.openReservations().length,
         databaseBytes: store.db.sizeBytes(),
       },

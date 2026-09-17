@@ -25,7 +25,7 @@ Base conventions:
 | `GET` | `/api/ping` | Liveness. Used by the UI test suite and probes. |
 | `GET` | `/api/health` | Readiness: `{ ok, uptimeSeconds, database: { path, bytes, migrations }, degraded: [{ component, detail }], shell, version }`. `degraded` is where a missing notification daemon or an unreachable store is reported instead of being swallowed. |
 | `GET` | `/api/dashboard` | The dashboard aggregate: projects, active runs, usage, provider health, FREE ONLY state, pending approvals, open reservations, recent events, warnings. |
-| `GET` | `/api/settings` | `{ settings, defaults, capabilities, counts }`. `capabilities.shell` is `{ kind, platform, isDesktop }`. |
+| `GET` | `/api/settings` | `{ settings, defaults, capabilities, counts }`. `capabilities.shell` is `{ kind, platform, isDesktop }`; `counts` reports `agents` (every declared role) and `agentsInDefaultTeam` separately, because the roster is larger than the team a project starts with. |
 | `PATCH` | `/api/settings` | Partial settings update (execution mode, FREE ONLY, supervisor limits, security flags, retention, notifications, quota behaviour). |
 | `GET` | `/api/activity` | Events with `counts` grouped by severity/type; filters `type`, `severity`, `agentId`, `projectId`, `limit`. |
 | `GET` | `/api/performance` | Tokens, latency, throughput, cost, success rates per provider/model/agent, failures by category, system metrics. |
