@@ -65,6 +65,15 @@ Everything is bounded: `maxTicks` per `runToCompletion`, `maxRetriesPerTask`,
 `maxTokensPerTask`, `maxTaskRuntimeMs`, `maxAgentIterations`, `maxParallelAgents`. A tick
 that cannot make progress stops and reports why, instead of spinning.
 
+Step 8 is also where attribution comes from. `GitRepository` reports every commit it creates
+through an `onCommit` callback, which the container and the test harness record in `git_commits`
+with the agent and task that produced it — the Git screen's per-agent panels read that table, and
+`git log` alone could never answer "which agent wrote this". When a task completes in AUTO mode
+the engine commits whatever is left on the agent's branch (`<agent>: <task title>`), so a model
+that forgets to call `git_commit` still leaves inspectable work; in SUPERVISED and MANUAL mode it
+does not, because writing history is the operator's decision there and the Git screen has the
+button for it.
+
 Long-running work runs in a background scheduler (`packages/orchestrator/src/background.ts`)
 with a project claim file, crash recovery (tasks left `running` are re-queued) and a drain
 on shutdown. The desktop app, the headless worker and the API all start the same scheduler —

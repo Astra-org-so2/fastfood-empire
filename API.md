@@ -117,7 +117,7 @@ Base conventions:
 | `GET` | `/api/projects/:projectId/tests` | `{ runs, latest, summary, cases }`. |
 | `POST` | `/api/projects/:projectId/tests/run` | Run the project's own test command in the sandbox; records a run. |
 | `GET` | `/api/projects/:projectId/git/status` | Repository state: branch, upstream, ahead/behind, working-tree `entries`, `conflictedPaths`, `operationInProgress`, `headSha`, `branches`. `isRepository: false` when the workspace is not a repo yet. |
-| `GET` | `/api/projects/:projectId/git/log` | `{ commits, recorded, byAgent }` — history plus this installation's commits attributed to agents. |
+| `GET` | `/api/projects/:projectId/git/log` | `{ commits, recorded, byAgent }` — history plus this installation's commits attributed to agents. `recorded` and `byAgent` come from the `git_commits` table this installation writes on every commit, so attribution survives even when the branch is later squashed or rebased. |
 | `GET` | `/api/projects/:projectId/git/diff` | Diff by `path`, by `from`/`to`, or against HEAD; with stats. |
 | `POST` | `/api/projects/:projectId/git/branch` | Create/checkout a branch. |
 | `POST` | `/api/projects/:projectId/git/commit` | Commit selected files with a message (agent attribution optional). |

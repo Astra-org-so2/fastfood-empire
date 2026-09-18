@@ -415,6 +415,14 @@ export class RunEngine {
     switch (result.status) {
       case 'completed': {
         const taskResult: TaskResult = result.result ?? { summary: 'Completed.', artifacts: [], tokenUsage: { input: 0, output: 0 } };
+        // A finished task must leave its work somewhere inspectable. Agents are told to
+        // commit themselves, but a model that forgets would leave the task marked done
+        // while the files sit uncommitted on its branch — so in AUTO mode the engine
+        // commits what the task changed. In SUPERVISED/MANUAL mode it deliberately does
+        // not: writing history there is the operator's call, and the Git screen offers
+        // the commit button for exactly that (§17, §44). A commit on a per-agent branch
+        // is scoped to that agent's work and is not destructive to anyone else's.
+        if (this.options.settings().executionMode === 'auto') void this.commitTaskWork(project, task, agentId, git);
         store.tasks.update(task.id, {
           status: 'done',
           completedAt: finishedAt,
@@ -481,6 +489,49 @@ export class RunEngine {
       ...(result.status === 'completed' ? { tasksCompleted: 1 } : {}),
       ...(terminalFailure ? { tasksFailed: 1 } : {}),
     });
+  }
+
+  /**
+   * Commits whatever a completed task left on its branch, attributed to the agent.
+   *
+   * Best-effort by design: a repository that cannot be committed (conflict mid-flight,
+   * detached workspace) must not turn a completed task into a failed one — the failure is
+   * logged and the file state stays visible in the Git screen.
+   */
+  private async commitTaskWork(project: Project, task: Task, agentId: AgentId, git: GitRepository): Promise<void> {
+    try {
+      const status = await git.status();
+      if (!status.isRepository || status.clean || status.operationInProgress) return;
+      // Never sweep a conflicted tree into a commit: the operator has to decide.
+      if (status.conflictedPaths.length) {
+        this.options.logger.warn('skipping the automatic commit: the working tree has conflicts', { taskId: task.id, agentId });
+        return;
+      }
+      const title = task.title.trim().replace(/\s+/g, ' ').slice(0, 72);
+      const commit = await git.commit({
+        message: `${agentId}: ${title}`,
+        agentId,
+        taskId: task.id,
+        paths: 'all',
+      });
+      if (commit) {
+        this.options.events.emit(
+          'git.commit_created',
+          { taskId: task.id, agentId, sha: commit.sha, branch: status.branch },
+          {
+            message: `Committed ${commit.shortSha} on ${status.branch ?? 'the agent branch'}: ${title}`,
+            projectId: project.id,
+            taskId: task.id,
+            agentId,
+          },
+        );
+      }
+    } catch (err) {
+      this.options.logger.warn('automatic task commit failed', {
+        taskId: task.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   }
 
   /** Re-indexes the memory view of the repository after a task touched files. */

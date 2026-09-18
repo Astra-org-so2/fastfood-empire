@@ -63,6 +63,28 @@ export interface GitRepositoryOptions {
   authorEmail: string;
   /** Timeout for git operations. */
   timeoutMs?: number;
+  /**
+   * Called after every commit this process creates, with the agent/task it belongs to
+   * and the size of the change. This is what fills the `git_commits` table: without it
+   * the Git screen's per-agent attribution panels have nothing to show, because rereading
+   * `git log` alone cannot tell which agent a commit came from (§17).
+   */
+  onCommit?: (commit: GitCommitRecord) => void;
+}
+
+export interface GitCommitRecord {
+  sha: string;
+  shortSha: string;
+  branch: string | null;
+  message: string;
+  authorName: string;
+  authorEmail: string;
+  agentId: AgentId | null;
+  taskId: string | null;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  committedAt: string;
 }
 
 export class GitRepository {
@@ -71,6 +93,7 @@ export class GitRepository {
   private readonly authorName: string;
   private readonly authorEmail: string;
   private readonly timeoutMs: number;
+  private readonly onCommit: ((commit: GitCommitRecord) => void) | undefined;
 
   constructor(options: GitRepositoryOptions) {
     this.path = path.resolve(options.path);
@@ -78,6 +101,7 @@ export class GitRepository {
     this.authorName = options.authorName;
     this.authorEmail = options.authorEmail;
     this.timeoutMs = options.timeoutMs ?? 120_000;
+    this.onCommit = options.onCommit;
   }
 
   private async git(args: string[], options: { allowFailure?: boolean } = {}): Promise<CommandResult> {
@@ -360,8 +384,37 @@ export class GitRepository {
       committedAt: new Date().toISOString(),
       refs: '',
     };
-    this.logger.info('commit created', { sha: commit.shortSha, agent: input.agentId ?? 'system', files: staged.stdout.trim().split('\n').length });
+    const files = staged.stdout.trim() ? staged.stdout.trim().split('\n') : [];
+    this.logger.info('commit created', { sha: commit.shortSha, agent: input.agentId ?? 'system', files: files.length });
     void result;
+
+    if (this.onCommit) {
+      try {
+        // `--numstat` on HEAD reports the change the commit introduced, including the
+        // first commit in a repository (where HEAD~1 does not exist).
+        const stat = await this.git(['show', '--numstat', '--format=', commit.sha], { allowFailure: true });
+        let insertions = 0;
+        let deletions = 0;
+        for (const line of stat.stdout.trim().split('\n')) {
+          const [added, removed] = line.split('\t');
+          if (/^\d+$/.test(added ?? '')) insertions += Number(added);
+          if (/^\d+$/.test(removed ?? '')) deletions += Number(removed);
+        }
+        const branch = (await this.status()).branch ?? null;
+        this.onCommit({
+          ...commit,
+          branch,
+          agentId: input.agentId ?? null,
+          taskId: input.taskId ?? null,
+          filesChanged: files.length,
+          insertions,
+          deletions,
+        });
+      } catch (err) {
+        // Recording attribution must never fail the commit that already happened.
+        this.logger.debug('could not record commit attribution', { sha: commit.shortSha, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
     return commit;
   }
 

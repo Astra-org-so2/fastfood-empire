@@ -65,7 +65,7 @@ export interface Harness {
   approvals: ApprovalService;
   createAgent: (agentId: string) => BaseAgent;
   workspaceFor: () => Workspace;
-  gitFor: (branch?: string) => GitRepository;
+  gitFor: (project?: Project) => GitRepository;
   createEngine: (overrides?: Partial<AppSettings>) => RunEngine;
   createPlanner: () => PlannerService;
   /**
@@ -141,7 +141,33 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
   });
 
   const workspaceFor = () => new Workspace({ rootPath: workspaceRoot, settings: () => settings, executionMode: () => settings.executionMode, logger });
-  const gitFor = () => new GitRepository({ path: workspaceRoot, logger, authorName: 'AI Dev Orchestrator', authorEmail: 'agents@aido.local' });
+  const gitFor = (project?: Project) =>
+    new GitRepository({
+      path: workspaceRoot,
+      logger,
+      authorName: 'AI Dev Orchestrator',
+      authorEmail: 'agents@aido.local',
+      // Mirrors the API container: commits are attributed to the agent and task that made
+      // them. The project is resolved from the task when the caller did not pass one.
+      onCommit: (commit) => {
+        const projectId = project?.id ?? (commit.taskId ? store.tasks.get(commit.taskId)?.projectId : undefined);
+        if (!projectId) return;
+        store.commits.record({
+          projectId,
+          sha: commit.sha,
+          branch: commit.branch ?? 'main',
+          message: commit.message,
+          authorName: commit.authorName,
+          authorEmail: commit.authorEmail,
+          agentId: commit.agentId,
+          taskId: commit.taskId,
+          filesChanged: commit.filesChanged,
+          insertions: commit.insertions,
+          deletions: commit.deletions,
+          committedAt: commit.committedAt,
+        });
+      },
+    });
 
   const createAgent = (agentId: string) =>
     new BaseAgent({

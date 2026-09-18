@@ -203,6 +203,28 @@ export function createContainer(options: ContainerOptions = {}): Container {
       logger,
       authorName: project.settings.gitAuthorName,
       authorEmail: project.settings.gitAuthorEmail,
+      // Every commit this process makes is recorded against the agent and task that
+      // produced it, which is what the Git screen's attribution panels read.
+      onCommit: (commit) => {
+        try {
+          store.commits.record({
+            projectId: project.id,
+            sha: commit.sha,
+            branch: commit.branch ?? project.branch,
+            message: commit.message,
+            authorName: commit.authorName,
+            authorEmail: commit.authorEmail,
+            agentId: commit.agentId,
+            taskId: commit.taskId,
+            filesChanged: commit.filesChanged,
+            insertions: commit.insertions,
+            deletions: commit.deletions,
+            committedAt: commit.committedAt,
+          });
+        } catch (err) {
+          logger.warn('could not record a commit', { sha: commit.sha, error: err instanceof Error ? err.message : String(err) });
+        }
+      },
     });
 
   const provisionWorkspace = async (project: Project): Promise<{ created: boolean; cloned: boolean; initialised: boolean }> => {

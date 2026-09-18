@@ -188,7 +188,7 @@ packages/
 
 ```bash
 npm run typecheck                        # tsc across all packages and the app
-npm run test                             # 87 unit + integration tests (71 + 16 screens)
+npm run test                             # 90 unit + integration tests (74 + 16 screens)
 npm run test:ui                          # the 16 screen render tests on their own
 npm run e2e:api                          # 60 checks against a real listening server
 npm run package:deb                      # build the Debian package from the built bundles
@@ -211,7 +211,9 @@ approval was still pending. Four more were found by driving the two real provide
 (a local HTTP server that speaks OpenAI-compatible and Google Generative) instead of only the
 simulator: every OpenAI-compatible response was read as empty content, that adapter sent no
 credentials at all, header-learned limits never reached the quota checks, and a response
-reporting "0 remaining" had its cooldown cleared by the same successful call. The approval path is now covered end to end: the tool refuses
+reporting "0 remaining" had its cooldown cleared by the same successful call. A third came from
+the Git path: the `git_commits` table was never written, so the Git screen's per-agent
+attribution panels were permanently empty even though commits carried an `Agent:` trailer. The approval path is now covered end to end: the tool refuses
 while the request is undecided, approving it re-queues the blocked task and the same call
 succeeds, denying it fails the task with the operator's reason and releases its dependents,
 and the scope the operator picked is honoured — "once" covers the resumed attempt, "task"
