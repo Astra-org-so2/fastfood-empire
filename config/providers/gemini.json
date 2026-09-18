@@ -1,0 +1,56 @@
+{
+  "id": "gemini",
+  "name": "Google Gemini",
+  "kind": "google_generative",
+  "documentationUrl": "https://ai.google.dev/gemini-api/docs/rate-limits",
+  "apiBaseUrl": "https://generativelanguage.googleapis.com/v1beta",
+  "authenticationType": "api_key",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "provider_timezone",
+    "resetTimezone": "America/Los_Angeles",
+    "note": "Google publishes per-model free-tier limits (RPM/TPM/RPD) that have changed more than once. The daily counter resets at midnight Pacific Time. Exact figures are NOT asserted here: confirm them in Google AI Studio and record them in Settings → Quotas, or rely on observed 429 handling."
+  },
+  "capabilities": ["chat", "streaming", "reasoning", "vision", "tools", "structuredOutput", "jsonMode", "codeGeneration", "longContext", "embeddings", "imageGeneration"],
+  "envKeys": ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models?pageSize=1",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [
+    {
+      "id": "gemini-2.5-pro",
+      "displayName": "Gemini 2.5 Pro",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "capabilities": { "reasoning": true, "vision": true, "tools": true, "longContext": true, "codeGeneration": true, "structuredOutput": true }
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "displayName": "Gemini 2.5 Flash",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "capabilities": { "reasoning": true, "vision": true, "tools": true, "longContext": true, "codeGeneration": true, "structuredOutput": true }
+    },
+    {
+      "id": "gemini-2.5-flash-lite",
+      "displayName": "Gemini 2.5 Flash-Lite",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 65536,
+      "capabilities": { "vision": true, "tools": true, "longContext": true, "codeGeneration": true }
+    },
+    {
+      "id": "gemini-2.0-flash",
+      "displayName": "Gemini 2.0 Flash",
+      "contextWindow": 1048576,
+      "maxOutputTokens": 8192,
+      "capabilities": { "vision": true, "tools": true, "longContext": true, "codeGeneration": true }
+    }
+  ],
+  "notes": "Free tier exists without a credit card. Gemini does not return rate-limit headers, so limits are only learnable from 429 responses and provider documentation. Model ids come from the live /models endpoint when discovery runs; seeds above are a bootstrap hint and may be stale.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

@@ -1,0 +1,27 @@
+{
+  "id": "cohere",
+  "name": "Cohere",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://docs.cohere.com/docs/rate-limits",
+  "apiBaseUrl": "https://api.cohere.ai/compatibility/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "Trial or production key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": null,
+    "quotaType": "unknown",
+    "resetStrategy": "unknown",
+    "resetTimezone": null,
+    "note": "Trial keys are rate limited and monthly-capped; production keys are billed. The API does not state which kind a key is in a machine-readable way, so the quota type stays UNKNOWN until verified by the operator."
+  },
+  "capabilities": ["chat", "streaming", "tools", "jsonMode", "embeddings"],
+  "envKeys": ["COHERE_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Uses Cohere's OpenAI-compatibility surface; if it is unavailable for a key the adapter reports a clear invalid_request rather than silently falling back to a different protocol.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

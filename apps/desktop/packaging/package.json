@@ -1,0 +1,15 @@
+{
+  "name": "@aido/desktop-packaging",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Opt-in Electron toolchain: only needed to build installers or run the desktop shell.",
+  "main": "package-tool.mjs",
+  "scripts": {
+    "package": "node package-tool.mjs"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "//": "Install with `cd apps/desktop/packaging && npm install` (or ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install on a network without access to the Electron download host)."
+}

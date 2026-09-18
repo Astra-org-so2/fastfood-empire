@@ -1,0 +1,71 @@
+{
+  "id": "groq",
+  "name": "Groq",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://console.groq.com/docs/rate-limits",
+  "apiBaseUrl": "https://api.groq.com/openai/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "API key", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "utc_midnight",
+    "resetTimezone": null,
+    "note": "Free tier without a credit card. Groq returns x-ratelimit-* response headers on every call, so this app learns the real limits and the real remaining budget automatically. Limits are applied per model; a Developer (credit card) tier raises them substantially. The seeded RPM/TPM below are a starting point only and are marked unpublished-for-this-key until the first response header arrives."
+  },
+  "capabilities": ["chat", "streaming", "tools", "jsonMode", "codeGeneration", "vision"],
+  "envKeys": ["GROQ_API_KEY"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {
+    "requestsRemaining": ["x-ratelimit-remaining-requests"],
+    "requestsLimit": ["x-ratelimit-limit-requests"],
+    "tokensRemaining": ["x-ratelimit-remaining-tokens"],
+    "tokensLimit": ["x-ratelimit-limit-tokens"],
+    "resetRequests": ["x-ratelimit-reset-requests"],
+    "resetTokens": ["x-ratelimit-reset-tokens"],
+    "retryAfter": ["retry-after"]
+  },
+  "telemetrySemantics": {
+    "requests": "per_day",
+    "tokens": "per_minute"
+  },
+  "quotaLimits": {
+    "requestsPerMinute": 30,
+    "requestsPerHour": null,
+    "requestsPerDay": 1440,
+    "requestsPerMonth": null,
+    "tokensPerMinute": 6000,
+    "tokensPerDay": null,
+    "tokensPerMonth": null,
+    "concurrentRequests": null,
+    "resetStrategy": "utc_midnight",
+    "resetTimezone": null,
+    "provenance": {
+      "source": "provider_docs",
+      "confidence": 0.35,
+      "reference": "https://console.groq.com/docs/rate-limits",
+      "note": "Placeholder until the first real response header is observed; RPM/TPM are commonly reported around 30/6000 for free keys but change per model and per org. Header telemetry overrides this immediately."
+    }
+  },
+  "seedModels": [
+    {
+      "id": "llama-3.3-70b-versatile",
+      "displayName": "Llama 3.3 70B Versatile",
+      "contextWindow": 131072,
+      "maxOutputTokens": 32768,
+      "capabilities": { "codeGeneration": true, "tools": true, "longContext": true, "structuredOutput": true }
+    },
+    {
+      "id": "llama-3.1-8b-instant",
+      "displayName": "Llama 3.1 8B Instant",
+      "contextWindow": 131072,
+      "maxOutputTokens": 8192,
+      "capabilities": { "codeGeneration": true, "tools": true, "longContext": true }
+    }
+  ],
+  "notes": "Response headers give authoritative per-model remaining budget; the quota engine records the observed limit per model, so stale seed values are corrected automatically after the first request. Model ids are taken from /models when discovery runs.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

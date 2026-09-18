@@ -1,0 +1,19 @@
+{
+  "name": "@aido/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Dev Orchestrator desktop shell (Linux) \u2014 the same product as the web build, inside a native window.",
+  "main": "dist/desktop/main.cjs",
+  "scripts": {
+    "build": "node scripts/build-desktop.mjs",
+    "package": "node apps/desktop/packaging/package-tool.mjs --target=deb",
+    "start": "node apps/desktop/packaging/start.mjs"
+  },
+  "dependencies": {
+    "@aido/config": "*",
+    "@aido/orchestrator": "*",
+    "@aido/platform": "*",
+    "@aido/types": "*",
+    "zod": "^3.23.8"
+  }
+}

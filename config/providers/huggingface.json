@@ -1,0 +1,27 @@
+{
+  "id": "huggingface",
+  "name": "Hugging Face Inference Providers",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://huggingface.co/docs/inference-providers/pricing",
+  "apiBaseUrl": "https://router.huggingface.co/v1",
+  "authenticationType": "bearer",
+  "credentialFields": [{ "key": "apiKey", "label": "Access token (with Inference Providers permission)", "required": true, "secret": true }],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "provider_timezone",
+    "resetTimezone": null,
+    "note": "Free accounts receive a small monthly inference credit that renews each month; paid accounts get more. The allowance is denominated in credit, not tokens, and its size is not exposed by this API — so remaining budget is UNKNOWN until the operator records it."
+  },
+  "capabilities": ["chat", "streaming", "codeGeneration", "longContext"],
+  "envKeys": ["HUGGINGFACE_API_KEY", "HF_TOKEN"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Meta-router over multiple upstream inference providers. Token-level routing means the real serving provider can vary per request, so latency and reliability statistics stay attached to the HF model id.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}

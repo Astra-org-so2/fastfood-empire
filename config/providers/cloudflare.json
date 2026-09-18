@@ -1,0 +1,30 @@
+{
+  "id": "cloudflare",
+  "name": "Cloudflare Workers AI",
+  "kind": "openai_compatible",
+  "documentationUrl": "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+  "apiBaseUrl": "https://api.cloudflare.com/client/v4/accounts/{accountId}/ai/v1",
+  "authenticationType": "api_key_pair",
+  "credentialFields": [
+    { "key": "apiKey", "label": "API token", "required": true, "secret": true },
+    { "key": "accountId", "label": "Account ID", "required": true, "secret": false }
+  ],
+  "freeTier": {
+    "available": true,
+    "quotaType": "free_renewable",
+    "resetStrategy": "utc_midnight",
+    "resetTimezone": null,
+    "note": "Workers AI includes a daily free allocation measured in 'Neurons' rather than tokens, and the day rolls over at 00:00 UTC. Neuron consumption per model is not predictable from token counts, so this provider is tracked in requests plus provider-reported errors, and its token quotas are left UNKNOWN by design."
+  },
+  "capabilities": ["chat", "streaming", "codeGeneration", "imageGeneration", "embeddings"],
+  "envKeys": ["CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID"],
+  "modelsEndpoint": "/models",
+  "usageEndpoint": null,
+  "healthEndpoint": "/models",
+  "telemetry": {},
+  "quotaLimits": null,
+  "seedModels": [],
+  "notes": "Uses the account-scoped OpenAI-compatible surface. Model discovery hits the account model search endpoint and degrades to an empty catalogue with an explicit warning if the token lacks permission, rather than inventing a model list.",
+  "metadataVerified": false,
+  "lastVerifiedAt": null
+}
