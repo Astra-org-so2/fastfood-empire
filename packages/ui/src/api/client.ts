@@ -453,11 +453,24 @@ export interface GitCommitSummary {
   refs: string;
 }
 
+export interface RecordedCommit {
+  sha: string;
+  shortSha?: string;
+  branch: string;
+  message: string;
+  agentId: AgentId | null;
+  taskId: string | null;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  committedAt: string;
+}
+
 export interface GitLogResponse {
   commits: GitCommitSummary[];
   /** Commits this installation recorded against the agent that made them. */
-  recorded: { sha: string; agentId: string | null; message: string; createdAt?: string }[];
-  byAgent: { agentId: string | null; commits: number }[];
+  recorded: RecordedCommit[];
+  byAgent: { agentId: string | null; commits: number; insertions?: number; deletions?: number }[];
 }
 
 export interface TestsResponse {

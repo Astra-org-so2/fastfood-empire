@@ -188,7 +188,7 @@ packages/
 
 ```bash
 npm run typecheck                        # tsc across all packages and the app
-npm run test                             # 90 unit + integration tests (74 + 16 screens)
+npm run test                             # 91 unit + integration tests (75 + 16 screens)
 npm run test:ui                          # the 16 screen render tests on their own
 npm run e2e:api                          # 60 checks against a real listening server
 npm run package:deb                      # build the Debian package from the built bundles

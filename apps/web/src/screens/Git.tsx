@@ -146,6 +146,7 @@ export function GitScreen(): ReactNode {
                     {log.data.byAgent.map((entry) => (
                       <Badge key={entry.agentId ?? 'system'} tone="neutral">
                         {entry.agentId ?? 'system'}: {entry.commits}
+                        {entry.insertions !== undefined ? ` · +${entry.insertions}/-${entry.deletions ?? 0}` : ''}
                       </Badge>
                     ))}
                   </div>
@@ -204,6 +205,12 @@ export function GitScreen(): ReactNode {
                           <Mono>{entry.sha.slice(0, 8)}</Mono>
                           {entry.agentId ? <AgentLink agentId={entry.agentId} /> : <span className="text-faint">system</span>}
                           <span className="truncate text-muted">{entry.message}</span>
+                          {entry.filesChanged ? (
+                            <span className="shrink-0 text-faint">
+                              {entry.filesChanged} file{entry.filesChanged === 1 ? '' : 's'} · +{entry.insertions}/-{entry.deletions}
+                            </span>
+                          ) : null}
+                          <span className="ml-auto shrink-0 text-faint">{entry.branch}</span>
                         </li>
                       ))}
                     </ul>

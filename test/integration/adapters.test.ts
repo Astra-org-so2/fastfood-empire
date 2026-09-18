@@ -375,6 +375,50 @@ describe('real provider adapters', () => {
     expect(generate?.headers['content-type']).toContain('application/json');
   });
 
+  it('streams a completion, keeps partial output and collects usage from the final frame', async () => {
+    const created = await openAiHarness();
+    server!.respond(200, { data: [{ id: 'llama-3.1-8b-instant', context_length: 131_072 }] });
+    await created.registry.discoverModels('local-openai');
+
+    // A real SSE exchange: three content frames, provider keep-alive noise between them,
+    // a usage-only final frame, then the terminator.
+    const frames = [
+      'data: {"choices":[{"delta":{"content":"Hello"}}]}',
+      ': keep-alive',
+      'data: {"choices":[{"delta":{"content":", "}}]}',
+      'data: {"choices":[{"delta":{"content":"world"}}]}',
+      'data: {"choices":[],"usage":{"prompt_tokens":11,"completion_tokens":3,"total_tokens":14}}',
+      'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}',
+      'data: [DONE]',
+      '',
+    ].join('\n\n');
+    server!.respond(200, frames, { 'content-type': 'text/event-stream' });
+
+    const provider = created.registry.provider('local-openai')!;
+    let text = '';
+    let finishReason: string | undefined;
+    let usage: { inputTokens: number; outputTokens: number } | undefined;
+    for await (const chunk of provider.stream({
+      traceId: 'trace-stream',
+      modelId: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: 'Say hello.' }],
+      timeoutMs: 5_000,
+    })) {
+      text += chunk.delta;
+      if (chunk.finishReason) finishReason = chunk.finishReason;
+      if (chunk.usage) usage = { inputTokens: chunk.usage.inputTokens, outputTokens: chunk.usage.outputTokens };
+    }
+
+    expect(text).toBe('Hello, world');
+    expect(finishReason).toBe('stop');
+    expect(usage).toEqual({ inputTokens: 11, outputTokens: 3 });
+
+    const call = server!.received.at(-1);
+    expect(call?.headers.authorization).toBe('Bearer test-key-openai-secret');
+    expect(call?.headers.accept).toBe('text/event-stream');
+    expect((call?.body as { stream?: boolean })?.stream).toBe(true);
+  });
+
   it('refuses a model of unknown cost in FREE ONLY rather than assuming it is free', async () => {
     // No declared pricing: the provider reports none, so the cost is genuinely unknown
     // and the $0 ceiling must reject it. Assuming "free" here is how a free-only mode
